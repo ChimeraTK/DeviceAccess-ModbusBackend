@@ -1,0 +1,10 @@
+@MAPFILE_REVISION 00
+sspa.COMMANDS   14      0       14
+sspa.RF_SLICE.1 28      14      28
+sspa.RF_SLICE.2 28      42      28
+sspa.RF_SLICE.3 28      70      28
+sspa.RF_SLICE.4 28      98      28
+sspa.DRIVER 14      126      14
+sspa.BAY        13      140     13
+sspa.SUPPLY     6       153     6
+sspa.CENTRAL    72      159     72

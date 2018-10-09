@@ -1,0 +1,53 @@
+<logicalNameMap>
+  <module name="Device">
+   <redirectedRegister name="current/idc_0">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_1">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_2">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_3">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_4">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_5">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_6">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   <redirectedRegister name="current/idc_7">
+      <targetDevice>SSPA</targetDevice>
+      <targetRegister>sspa/RF_SLICE/1</targetRegister>
+      <targetStartIndex>2</targetStartIndex>
+      <numberOfElements>1</numberOfElements>
+   </redirectedRegister>
+   
+  </module>
+</logicalNameMap>
