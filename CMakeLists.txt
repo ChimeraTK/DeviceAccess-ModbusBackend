@@ -36,7 +36,7 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src library_sources)
 
 add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${mtca4u-deviceaccess_CXX_FLAGS}")
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${mtca4u-deviceaccess_CXX_FLAGS} -DDUMMY")
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
 target_link_libraries(${PROJECT_NAME} ${mtca4u-deviceaccess_LIBRARIES} ${MODBUS} )
 
@@ -57,6 +57,7 @@ if(Boost_UNIT_TEST_FRAMEWORK_FOUND)
   add_test(testMapping testMapping)
   
   add_executable(testServer ${CMAKE_SOURCE_DIR}/test/testServer.C )
+  set_target_properties(testServer PROPERTIES COMPILE_FLAGS "-DDUMMY")
   target_link_libraries(testServer ${MODBUS} ${ChimeraTK-DeviceAccess_LIBRARIES} ${ChimeraTK-ApplicationCore_LIBRARIES} ${ChimeraTK-ControlSystemAdapter-OPCUAAdapter_LIBRARIES})
   add_test(testMapping testMapping)
 else()

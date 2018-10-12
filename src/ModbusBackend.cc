@@ -10,6 +10,8 @@
 #include <ChimeraTK/BackendFactory.h>
 #include <ChimeraTK/DeviceAccessVersion.h>
 
+#include <bitset>
+
 // You have to define an "extern C" function with this signature. It has to return
 // CHIMERATK_DEVICEACCESS_VERSION for version checking when the library is loaded
 // at run time. This function is used to determine that this is a valid DeviceAcces
@@ -43,6 +45,7 @@ namespace ChimeraTK{
       throw ChimeraTK::logic_error("Device already has been opened");
     }
     std::cout << "Connecting to: " << _IPAddress.c_str() << ":" << _port << std::endl;
+#ifndef DUMMY
     _ctx = modbus_new_tcp(_IPAddress.c_str(), _port);
     if (_ctx == NULL) {
       throw ChimeraTK::runtime_error(std::string("Unable to allocate libmodbus context: ") + modbus_strerror(errno));
@@ -51,14 +54,17 @@ namespace ChimeraTK{
       throw ChimeraTK::runtime_error(std::string("Connection failed: ") + modbus_strerror(errno));
       modbus_free(_ctx);
     }
+#endif
     _opened = true;
   }
 
   void ModbusBackend::close(){
+#ifndef DUMMY
     if(_opened){
       modbus_close(_ctx);
       modbus_free(_ctx);
     }
+#endif
     _opened = false;
   }
 
@@ -85,8 +91,54 @@ namespace ChimeraTK{
     return boost::shared_ptr<DeviceBackend> (new ModbusBackend(IPAddress, port, mapFileName));
   }
 
+
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
     std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
+    union S{
+      uint16_t data[2];
+      int32_t fdata;
+    };
+    size_t length = sizeInBytes/sizeof(int32_t);
+    int32_t toFill[length];
+    std::cout << "Filling " << length << " elements." << std::endl;
+
+#ifndef DUMMY
+    uint16_t tab_reg[length];
+    int rc = modbus_read_registers(_ctx, address, length, tab_reg);
+    if (rc == -1) {
+      throw ChimeraTK::logic_error(modbus_strerror(errno));
+    }
+    if(rc != (int)length){
+      throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
+    }
+    S tmp;
+    tmp.data[1] = 0;
+    for(size_t i = 0; i < length; i++){
+      tmp.data[0] = tab_reg[i];
+      toFill[i] = tmp.fdata;
+    }
+#else
+    S test;
+    float myData = 42.42;
+    // convert test data to int32_t
+    int32_t* pmyData = (int32_t*)&myData;
+    test.fdata = *pmyData;
+    // now split the two int16 parts put them into seperate int32_t
+    S split1;
+    S split2;
+    split1.data[0] = test.data[0];
+    split1.data[1] = 0;
+    split2.data[0] = test.data[1];
+    split2.data[1] = 0;
+
+    // assign the two int32_t (containing the uint16_t components)
+    toFill[0] = split1.fdata;
+    if(length>1){
+      toFill[1] = split2.fdata;
+    }
+
+#endif
+    memcpy((void*)data, &toFill[0], length*sizeof(int32_t));
     return;
   }
 
