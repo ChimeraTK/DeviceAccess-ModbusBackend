@@ -19,16 +19,19 @@ int main(){
   uint16_t tab_reg[32];
   modbus_t *ctx;
 
-  ctx = modbus_new_tcp("127.001", MODBUS_TCP_DEFAULT_PORT);
+//  ctx = modbus_new_tcp("149.220.56.187", MODBUS_TCP_DEFAULT_PORT);
+  ctx = modbus_new_tcp("149.220.61.112", MODBUS_TCP_DEFAULT_PORT);
   if (ctx == NULL) {
     cerr <<  "Unable to allocate libmodbus context: " << modbus_strerror(errno) << endl;
   }
+  struct timeval old_response_timeout;
 
+  /* Save original timeout */
+  modbus_get_response_timeout(ctx, &old_response_timeout);
   if (modbus_connect(ctx) == -1) {
     cerr <<  "Connection failed: " << modbus_strerror(errno) << endl;
     modbus_free(ctx);
   } else {
-    /* Read 5 registers from the address 0 */
     int rc = modbus_read_registers(ctx, 14, 28, tab_reg);
     if (rc == -1) {
       cerr << modbus_strerror(errno) << endl;
@@ -43,7 +46,9 @@ int main(){
   for(size_t i = 0; i < 8; i++){
     cout << "Current IDC Nr." << i << ": " << modbus_get_float(&tab_reg[2+i*2]) << endl;
   }
-
+  cout << "Voltage: " << modbus_get_float(&tab_reg[18]) << endl;
+  cout << "Temp 1: " <<  modbus_get_float(&tab_reg[20]) << endl;
+  cout << "Temp 1: " <<  modbus_get_float(&tab_reg[22]) << endl;
   S test;
   test.fdata = 42.42;
 
