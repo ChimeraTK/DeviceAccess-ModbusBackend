@@ -1,10 +1,113 @@
 @MAPFILE_REVISION 00
-sspa.COMMANDS   14      0       14
-sspa.RF_SLICE.1 28      14      28
-sspa.RF_SLICE.2 28      42      28
-sspa.RF_SLICE.3 28      70      28
-sspa.RF_SLICE.4 28      98      28
-sspa.DRIVER 14      126      14
-sspa.BAY        13      140     13
-sspa.SUPPLY     6       153     6
-sspa.CENTRAL    72      159     72
+sspa.COMMANDS                          14    0      14     1
+sspa.COMMANDS.BOOTOrder                 1    0       2     1   8  0 0 WO
+sspa.COMMANDS.DCOn                      1    1       2     1  16  0 0 WO
+sspa.COMMANDS.DCOff                     1    2       2     1  16  0 0 WO
+sspa.COMMANDS.ILCKReset                 1    3       2     1  16  0 0 WO
+sspa.COMMANDS.FaultReset                1    4       2     1  16  0 0 WO
+sspa.RF_SLICE.1                        28   14      28     2
+sspa.RF_SLICE.1.status                  1   14       2     2  16  0 0 RO
+sspa.RF_SLICE.1.config                  1   15       2     2   8  0 0 RO 
+sspa.RF_SLICE.1.current_Idc0            2   16       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc1            2   18       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc2            2   20       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc3            2   22       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc4            2   24       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc5            2   26       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc6            2   28       4     2  32  0 0 RO
+sspa.RF_SLICE.1.current_Idc7            2   30       4     2  32  0 0 RO
+sspa.RF_SLICE.1.Vamp                    2   32       4     2  32  0 0 RO
+sspa.RF_SLICE.1.Tbottom                 2   34       4     2  32  0 0 RO
+sspa.RF_SLICE.1.Ttop                    2   36       4     2  32  0 0 RO
+sspa.RF_SLICE.1.Fan                     1   38       2     2   2  0 0 RO
+sspa.RF_SLICE.1.TransistorStatus        1   40       2     2   8  0 0 RO
+sspa.RF_SLICE.1.TransistorConfiguration 1   41       1     2   8  0 0 RO
+sspa.RF_SLICE.2                        28   42      28     3
+sspa.RF_SLICE.2.status                  1   42       2     3  16  0 0 RO
+sspa.RF_SLICE.2.config                  1   43       2     3   8  0 0 RO 
+sspa.RF_SLICE.2.current_Idc0            2   44       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc1            2   46       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc2            2   48       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc3            2   50       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc4            2   52       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc5            2   54       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc6            2   56       4     3  32  0 0 RO
+sspa.RF_SLICE.2.current_Idc7            2   58       4     3  32  0 0 RO
+sspa.RF_SLICE.2.Vamp                    2   60       4     3  32  0 0 RO
+sspa.RF_SLICE.2.Tbottom                 2   62       4     3  32  0 0 RO
+sspa.RF_SLICE.2.Ttop                    2   64       4     3  32  0 0 RO
+sspa.RF_SLICE.2.Fan                     1   66       2     3   2  0 0 RO
+sspa.RF_SLICE.2.TransistorStatus        1   68       2     3   8  0 0 RO
+sspa.RF_SLICE.2.TransistorConfiguration 1   69       2     3   8  0 0 RO
+sspa.RF_SLICE.3                        28   70      28     4
+sspa.RF_SLICE.3.status                  1   70       2     4  16  0 0 RO
+sspa.RF_SLICE.3.config                  1   71       2     4   8  0 0 RO 
+sspa.RF_SLICE.3.current_Idc0            2   72       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc1            2   74       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc2            2   76       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc3            2   78       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc4            2   80       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc5            2   82       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc6            2   84       4     4  32  0 0 RO
+sspa.RF_SLICE.3.current_Idc7            2   86       4     4  32  0 0 RO
+sspa.RF_SLICE.3.Vamp                    2   88       4     4  32  0 0 RO
+sspa.RF_SLICE.3.Tbottom                 2   90       4     4  32  0 0 RO
+sspa.RF_SLICE.3.Ttop                    2   92       4     4  32  0 0 RO
+sspa.RF_SLICE.3.Fan                     1   94       2     4   2  0 0 RO
+sspa.RF_SLICE.3.TransistorStatus        1   96       2     4   8  0 0 RO
+sspa.RF_SLICE.3.TransistorConfiguration 1   97       2     4   8  0 0 RO
+sspa.RF_SLICE.4                        28   98      28     5
+sspa.RF_SLICE.4.status                  1   98       2     5  16  0 0 RO
+sspa.RF_SLICE.4.config                  1  100       2     5   8  0 0 RO 
+sspa.RF_SLICE.4.current_Idc0            2  101       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc1            2  102       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc2            2  104       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc3            2  106       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc4            2  108       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc5            2  110       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc6            2  112       4     5  32  0 0 RO
+sspa.RF_SLICE.4.current_Idc7            2  114       4     5  32  0 0 RO
+sspa.RF_SLICE.4.Vamp                    2  116       4     5  32  0 0 RO
+sspa.RF_SLICE.4.Tbottom                 2  118       4     5  32  0 0 RO
+sspa.RF_SLICE.4.Ttop                    2  120       4     5  32  0 0 RO
+sspa.RF_SLICE.4.Fan                     1  122       2     5   2  0 0 RO
+sspa.RF_SLICE.4.TransistorStatus        1  124       2     5   8  0 0 RO
+sspa.RF_SLICE.4.TransistorConfiguration 1  125       2     5   8  0 0 RO
+sspa.DRIVER                            14  126      14     6
+sspa.DRIVE.status                       1  126       2     6  16  0 0 RO
+sspa.DRIVE.config                       1  127       2     6   8  0 0 RO
+sspa.DRIVE.Pforward                     2  128       4     6  32  0 0 RO
+sspa.DRIVE.Preflected                   2  130       4     6  32  0 0 RO
+sspa.DRIVE.Vamp                         2  132       4     6  32  0 0 RO
+sspa.DRIVE.Tdriver                      2  134       4     6  32  0 0 RO
+sspa.DRIVE.FANstatus                    1  136       2     6   4  0 0 RO
+sspa.DRIVE.PdutyCycle                   2  137       4     6  32  0 0 RO
+sspa.DRIVE.Vauxstatus                   1  139       2     6   4  0 0 RO
+sspa.BAY                               13  140      13     7
+sspa.BAY.status                         1  140       2     7  14  0 0 RO
+sspa.BAY.config                         1  141       2     7   8  0 0 RO
+sspa.BAY.TwaterIn                       2  142       4     7  32  0 0 RO
+sspa.BAY.TwaterOut                      2  144       4     7  32  0 0 RO
+sspa.SUPPLY                             6  153       6     8
+sspa.SUPPLY.HARDstatus                  1  153       2     8   8  0 0 RO
+sspa.SUPPLY.SOFTstatus                  1  155       2     8   3  0 0 RO
+sspa.SUPPLY.status                      1  156       2     8   8  0 0 RO
+sspa.CENTRAL                           72  159      72     9
+sspa.CENTRAL.KeyPresenceInstantaneous   1  159       2     9   5  0 0 RO
+sspa.CENTRAL.faults                     1  160       2     9   9  0 0 RO
+sspa.CENTRAL.KeyPresenceMemorized       1  161       2     9   4  0 0 RO
+sspa.CENTRAL.faultsMemorized            1  162       2     9   9  0 0 RO
+sspa.CENTRAL.config                     1  163       2     9   8  0 0 RO
+sspa.CENTRAL.PforwardOut                2  164       4     9  32  0 0 RO
+sspa.CENTRAL.PreflectedOut              2  166       4     9  32  0 0 RO
+sspa.CENTRAL.PforwardIn                 2  168       4     9  32  0 0 RO
+sspa.CENTRAL.PdutyCycle                 2  196       4     9  32  0 0 RO
+sspa.CENTRAL.trigger                    1  198       2     9  14  0 0 RO
+sspa.CENTRAL.units                      1  199       2     9   8  0 0 RO
+sspa.CENTRAL.VersionSoftware            2  200       4     9  32  0 0 RO
+sspa.CENTRAL.VersionFPGA                2  202       4     9  32  0 0 RO
+sspa.CENTRAL.NameSoftware               4  204       8     9  64  0 0 RO
+sspa.CENTRAL.NameFPGA                   4  208       8     9  64  0 0 RO
+sspa.CENTRAL.PartNumber                 4  212       8     9  64  0 0 RO
+sspa.CENTRAL.ReleaseNumber              2  216       4     9  32  0 0 RO
+sspa.CENTRAL.SerialNumber               1  218       2     9  16  0 0 RO
