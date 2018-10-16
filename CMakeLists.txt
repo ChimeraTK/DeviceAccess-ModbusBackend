@@ -1,4 +1,4 @@
-project(DeviceAccess-Modbus)
+project(ChimeraTK-DeviceAccess-Modbus)
 cmake_minimum_required(VERSION 2.8)
 
 set(${PROJECT_NAME}_MAJOR_VERSION 00)
@@ -27,8 +27,6 @@ endif(MODBUS)
 
 include(cmake/add_dependency.cmake)
 add_dependency(ChimeraTK-DeviceAccess 00.29 REQUIRED)
-add_dependency(ChimeraTK-ApplicationCore 01.00 REQUIRED)
-add_dependency(ChimeraTK-ControlSystemAdapter-OPCUAAdapter REQUIRED)
 
 include_directories( include )
 
@@ -38,7 +36,7 @@ add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${mtca4u-deviceaccess_CXX_FLAGS} -DDUMMY")
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
-target_link_libraries(${PROJECT_NAME} ${mtca4u-deviceaccess_LIBRARIES} ${MODBUS} )
+target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
 
 FILE( COPY ${CMAKE_SOURCE_DIR}/config/sigma_phi_FI004250_RF_SLICE.xlmap DESTINATION ${PROJECT_BINARY_DIR})
 FILE( COPY ${CMAKE_SOURCE_DIR}/config/sigma_phi_FI004250.map DESTINATION ${PROJECT_BINARY_DIR})
@@ -56,10 +54,32 @@ if(Boost_UNIT_TEST_FRAMEWORK_FOUND)
   target_link_libraries(testMapping ${MODBUS} ${ChimeraTK-DeviceAccess_LIBRARIES})
   add_test(testMapping testMapping)
   
-  add_executable(testServer ${CMAKE_SOURCE_DIR}/test/testServer.C )
-  set_target_properties(testServer PROPERTIES COMPILE_FLAGS "-DDUMMY")
-  target_link_libraries(testServer ${MODBUS} ${ChimeraTK-DeviceAccess_LIBRARIES} ${ChimeraTK-ApplicationCore_LIBRARIES} ${ChimeraTK-ControlSystemAdapter-OPCUAAdapter_LIBRARIES})
-  add_test(testMapping testMapping)
 else()
 message(STATUS "Boost unit test framework not found. No tests will be build.")
 endif()
+
+#Install the library and the executables
+install(TARGETS ${PROJECT_NAME}
+            RUNTIME DESTINATION bin
+            LIBRARY DESTINATION lib
+  )
+
+#all include files go into include/PROJECT_NAME
+#The exclusion of ${PROJECT_NAME} prevents the recursive installation of the files just being installed.
+#The original headers are in include/*.h, the installed ones in include/PROJECT_NAME/*.h.
+install(DIRECTORY ${${PROJECT_NAME}_INCLUDE_DIRS} DESTINATION include/${PROJECT_NAME}
+          FILES_MATCHING PATTERN "*.h"
+          PATTERN ".svn" EXCLUDE
+          PATTERN "${PROJECT_NAME}" EXCLUDE
+          )
+
+#Create the config files by filling the correct variables into the template (*.cmake.in).
+#All variables @VARIABLE@ are replaced with the current values, but they have to be set first....
+#Only the reference header is needed. The other variables are for dependencies of this library,
+#but there are none.
+set(${PROJECT_NAME}_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include ${Boost_INCLUDE_DIRS}")
+set(${PROJECT_NAME}_LIBRARIES "${PROJECT_NAME} ${MODBUS} ${ChimeraTK-DeviceAccess_LIBRARIES}")
+set(${PROJECT_NAME}_LIBRARY_DIRS "${CMAKE_INSTALL_PREFIX}/lib ${ChimeraTK-DeviceAccess_LIBRARY_DIRS}")
+set(${PROJECT_NAME}_CPPFLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
+set(${PROJECT_NAME}_LINKER_FLAGS "-Wl,-rpath=${CMAKE_INSTALL_PREFIX}/lib,-rpath=${DOOCS_DIR},--enable-new-dtags")
+include(${CMAKE_SOURCE_DIR}/cmake/create_cmake_config_files.cmake)
