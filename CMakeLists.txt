@@ -67,7 +67,7 @@ install(TARGETS ${PROJECT_NAME}
 #all include files go into include/PROJECT_NAME
 #The exclusion of ${PROJECT_NAME} prevents the recursive installation of the files just being installed.
 #The original headers are in include/*.h, the installed ones in include/PROJECT_NAME/*.h.
-install(DIRECTORY ${${PROJECT_NAME}_INCLUDE_DIRS} DESTINATION include/${PROJECT_NAME}
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/ DESTINATION include/${PROJECT_NAME}
           FILES_MATCHING PATTERN "*.h"
           PATTERN ".svn" EXCLUDE
           PATTERN "${PROJECT_NAME}" EXCLUDE
