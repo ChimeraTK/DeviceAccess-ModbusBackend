@@ -1,4 +1,4 @@
-project(ChimeraTK-DeviceAccess-Modbus)
+project(ChimeraTK-DeviceAccess-ModbusBackend)
 cmake_minimum_required(VERSION 2.8)
 
 set(${PROJECT_NAME}_MAJOR_VERSION 00)
@@ -34,7 +34,7 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src library_sources)
 
 add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
 target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
 
