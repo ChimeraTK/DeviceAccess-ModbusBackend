@@ -1,3 +1,0 @@
-@LOAD_LIB libDeviceAccess-Modbus.so
-SSPA  sdm://./modbus=168.1.0.0,501  sigma_phi_FI004250.map
-RF    sdm://./logicalNameMap:RF     sigma_phi_FI004250_RF_SLICE.xlmap
