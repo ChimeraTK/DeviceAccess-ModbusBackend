@@ -87,23 +87,20 @@ namespace ChimeraTK{
       port = std::stoi(std::string(*it));
     }
 
-
     return boost::shared_ptr<DeviceBackend> (new ModbusBackend(IPAddress, port, mapFileName));
   }
 
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
-    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
+
     union S{
       uint16_t data[2];
       int32_t fdata;
     };
     size_t length = sizeInBytes/sizeof(int32_t);
     int32_t toFill[length];
-    std::cout << "Filling " << length << " elements." << std::endl;
-
-#ifndef DUMMY
     uint16_t tab_reg[length];
+#ifndef DUMMY
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
     if (rc == -1) {
       throw ChimeraTK::logic_error(modbus_strerror(errno));
@@ -111,33 +108,29 @@ namespace ChimeraTK{
     if(rc != (int)length){
       throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
     }
+#else
+    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
+    std::cout << "Filling " << length << " elements." << std::endl;
+    int32Touint16 test;
+    float myData = 42.42;
+    // convert test data to int32_t
+    int32_t* pmyData = (int32_t*)&myData;
+    test.data32 = *pmyData;
+
+    for(size_t i; i < length; i++){
+      if(i%2 == 0)
+        tab_reg[i] = test.data16[0];
+      else
+        tab_reg[i] = test.data16[1];
+    }
+
+#endif
     int32Touint16 tmp;
     tmp.data16[1] = 0;
     for(size_t i = 0; i < length; i++){
       tmp.data16[0] = tab_reg[i];
       toFill[i] = tmp.data32;
     }
-#else
-    S test;
-    float myData = 42.42;
-    // convert test data to int32_t
-    int32_t* pmyData = (int32_t*)&myData;
-    test.fdata = *pmyData;
-    // now split the two int16 parts put them into seperate int32_t
-    int32Touint16 split1;
-    int32Touint16 split2;
-    split1.data16[0] = test.data[0];
-    split1.data16[1] = 0;
-    split2.data16[0] = test.data[1];
-    split2.data16[1] = 0;
-
-    // assign the two int32_t (containing the uint16_t components)
-    toFill[0] = split1.data32;
-    if(length>1){
-      toFill[1] = split2.data32;
-    }
-
-#endif
     memcpy((void*)data, &toFill[0], length*sizeof(int32_t));
     return;
   }
