@@ -16,6 +16,13 @@
 #include "ChimeraTK/NumericAddressedBackend.h"
 
 namespace ChimeraTK {
+  /**
+   * Union used to put uint16_t data into int32_t.
+   */
+  union int32Touint16{
+    uint16_t data16[2];
+    int32_t  data32;
+  };
   /** A class to provide the modbus backend."
    *
    */

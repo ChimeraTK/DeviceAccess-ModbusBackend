@@ -111,11 +111,11 @@ namespace ChimeraTK{
     if(rc != (int)length){
       throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
     }
-    S tmp;
-    tmp.data[1] = 0;
+    int32Touint16 tmp;
+    tmp.data16[1] = 0;
     for(size_t i = 0; i < length; i++){
-      tmp.data[0] = tab_reg[i];
-      toFill[i] = tmp.fdata;
+      tmp.data16[0] = tab_reg[i];
+      toFill[i] = tmp.data32;
     }
 #else
     S test;
@@ -124,17 +124,17 @@ namespace ChimeraTK{
     int32_t* pmyData = (int32_t*)&myData;
     test.fdata = *pmyData;
     // now split the two int16 parts put them into seperate int32_t
-    S split1;
-    S split2;
-    split1.data[0] = test.data[0];
-    split1.data[1] = 0;
-    split2.data[0] = test.data[1];
-    split2.data[1] = 0;
+    int32Touint16 split1;
+    int32Touint16 split2;
+    split1.data16[0] = test.data[0];
+    split1.data16[1] = 0;
+    split2.data16[0] = test.data[1];
+    split2.data16[1] = 0;
 
     // assign the two int32_t (containing the uint16_t components)
-    toFill[0] = split1.fdata;
+    toFill[0] = split1.data32;
     if(length>1){
-      toFill[1] = split2.fdata;
+      toFill[1] = split2.data32;
     }
 
 #endif
@@ -143,6 +143,18 @@ namespace ChimeraTK{
   }
 
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+    size_t length = sizeInBytes/sizeof(uint32_t);
+    int32Touint16 inputData[length];
+    uint16_t tab_reg[length];
+    for(size_t i = 0; i < length; i++){
+      inputData[i].data32 = data[i];
+      tab_reg[i] = inputData[i].data16[0];
+    }
+
+    int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
+    if(rc != (int)length){
+      throw ChimeraTK::logic_error("modbus::Backend: Not all registers where written...");
+    }
     return;
   }
 }
