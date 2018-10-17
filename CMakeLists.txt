@@ -34,29 +34,14 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src library_sources)
 
 add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
+option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
+if(DUMMY)
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
+else()
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
+endif(DUMMY)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
 target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
-
-#FILE( COPY ${CMAKE_SOURCE_DIR}/config/sigma_phi_FI004250_RF_SLICE.xlmap DESTINATION ${PROJECT_BINARY_DIR})
-#FILE( COPY ${CMAKE_SOURCE_DIR}/config/sigma_phi_FI004250.map DESTINATION ${PROJECT_BINARY_DIR})
-#FILE( COPY ${CMAKE_SOURCE_DIR}/config/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
-
-FIND_PACKAGE(Boost COMPONENTS unit_test_framework)
-
-if(Boost_UNIT_TEST_FRAMEWORK_FOUND)
-  ENABLE_TESTING()
-  add_executable(testModbusConnection ${CMAKE_SOURCE_DIR}/test/testModbusConnection.C )
-  target_link_libraries(testModbusConnection ${MODBUS})
-  add_test(testModbusConnection testModbusConnection)
-  
-  add_executable(testMapping ${CMAKE_SOURCE_DIR}/test/testMapping.C )
-  target_link_libraries(testMapping ${MODBUS} ${ChimeraTK-DeviceAccess_LIBRARIES})
-  add_test(testMapping testMapping)
-  
-else()
-message(STATUS "Boost unit test framework not found. No tests will be build.")
-endif()
 
 #Install the library and the executables
 install(TARGETS ${PROJECT_NAME}
