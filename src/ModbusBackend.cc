@@ -23,6 +23,7 @@ extern "C"{
 }
 
 namespace ChimeraTK{
+std::mutex modubus_mutex;
 
 /********************************************************************************************************************/
 
@@ -92,6 +93,7 @@ namespace ChimeraTK{
 
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
+    std::lock_guard<std::mutex> lock(modubus_mutex);
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
       length = 1;
@@ -134,6 +136,7 @@ namespace ChimeraTK{
   }
 
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+    std::lock_guard<std::mutex> lock(modubus_mutex);
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
     uint16_t tab_reg[length];
