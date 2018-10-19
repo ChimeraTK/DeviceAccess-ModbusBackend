@@ -100,9 +100,11 @@ namespace ChimeraTK{
 #ifndef DUMMY
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
     if (rc == -1) {
+      std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       throw ChimeraTK::logic_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
+      std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
     }
 #else
