@@ -92,12 +92,9 @@ namespace ChimeraTK{
 
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
-
-    union S{
-      uint16_t data[2];
-      int32_t fdata;
-    };
     size_t length = sizeInBytes/sizeof(int32_t);
+    if(length == 0)
+      length = 1;
     int32_t toFill[length];
     uint16_t tab_reg[length];
 #ifndef DUMMY
@@ -109,21 +106,20 @@ namespace ChimeraTK{
       throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
     }
 #else
-    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
-    std::cout << "Filling " << length << " elements." << std::endl;
+//    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
+//    std::cout << "Filling " << length << " elements." << std::endl;
     int32Touint16 test;
     float myData = 42.42;
     // convert test data to int32_t
     int32_t* pmyData = (int32_t*)&myData;
     test.data32 = *pmyData;
 
-    for(size_t i; i < length; i++){
+    for(size_t i = 0; i < length; i++){
       if(i%2 == 0)
         tab_reg[i] = test.data16[0];
       else
         tab_reg[i] = test.data16[1];
     }
-
 #endif
     int32Touint16 tmp;
     tmp.data16[1] = 0;
