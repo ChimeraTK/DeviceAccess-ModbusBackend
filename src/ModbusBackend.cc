@@ -133,11 +133,11 @@ std::mutex modubus_mutex;
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
     if (rc == -1) {
       std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      throw ChimeraTK::logic_error(modbus_strerror(errno));
+      throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
       std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      throw ChimeraTK::logic_error("modbus::Backend: Not all registers where read...");
+      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
 #else
 //    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
@@ -177,7 +177,7 @@ std::mutex modubus_mutex;
 
     int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
     if(rc != (int)length){
-      throw ChimeraTK::logic_error("modbus::Backend: Not all registers where written...");
+      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
     return;
   }
