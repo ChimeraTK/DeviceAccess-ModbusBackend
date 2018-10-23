@@ -30,14 +30,14 @@ std::mutex modubus_mutex;
   ModbusBackend::BackendRegisterer ModbusBackend::gOneWireBackend;
 
   ModbusBackend::BackendRegisterer::BackendRegisterer() {
-    BackendFactory::getInstance().registerBackendType("modbus","",&ModbusBackend::createInstance, CHIMERATK_DEVICEACCESS_VERSION);
+    BackendFactory::getInstance().registerBackendType("modbus", &ModbusBackend::createInstance, {"type", "map"});
     std::cout << "onewire::BackendRegisterer: registered backend type modbus" << std::endl;
   }
 
 /********************************************************************************************************************/
 
-  ModbusBackend::ModbusBackend(std::string IPAddress, int port, std::string mapFileName):
-     NumericAddressedBackend(mapFileName), _ctx(nullptr), _IPAddress(IPAddress), _port(port), _opened(false){
+  ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string,std::string> parameters):
+     NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _opened(false), _type(type){
 
   }
 
@@ -45,9 +45,25 @@ std::mutex modubus_mutex;
     if (_opened) {
       throw ChimeraTK::logic_error("Device already has been opened");
     }
-    std::cout << "Connecting to: " << _IPAddress.c_str() << ":" << _port << std::endl;
+    if(_type == tcp){
+      std::cout << "Connecting to: " << _address.c_str() << ":" << _parameters["port"] << std::endl;
+    } else {
+    std::cout << "Connecting to: " << _address.c_str() <<
+        "\n\t baud rate: " << _parameters["baud"] <<
+        "\n\t parity: " << _parameters["parity"] <<
+        "\n\t data bits: " << _parameters["data_bits"] <<
+        "\n\t stop bits: " << _parameters["stop_bits"] << std:: endl;
+    }
 #ifndef DUMMY
-    _ctx = modbus_new_tcp(_IPAddress.c_str(), _port);
+    if(_type == tcp){
+       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
+    } else {
+      _ctx = modbus_new_rtu(_address.c_str(),
+          std::stoi(_parameters["baud"]),
+          _parameters["parity"].c_str()[0],
+          std::stoi(_parameters["data_bits"]),
+          std::stoi(_parameters["stop_bits"]));
+    }
     if (_ctx == NULL) {
       throw ChimeraTK::runtime_error(std::string("Unable to allocate libmodbus context: ") + modbus_strerror(errno));
     }
@@ -55,6 +71,11 @@ std::mutex modubus_mutex;
       throw ChimeraTK::runtime_error(std::string("Connection failed: ") + modbus_strerror(errno));
       modbus_free(_ctx);
     }
+#else
+    std::cout << "Running in test mode" << std::endl;
+    std::cout << "Map file is: " << _parameters["map"] <<std::endl;
+    std::cout << "Type is: " << _type << std::endl;
+
 #endif
     _opened = true;
   }
@@ -69,26 +90,35 @@ std::mutex modubus_mutex;
     _opened = false;
   }
 
-  boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(std::string /*host*/, std::string /*instance*/,
-      std::list<std::string> parameters, std::string mapFileName) {
-
-    // check presense of required parameters
-    if(parameters.size() > 2 || parameters.size() < 1) {
-      throw ChimeraTK::logic_error("modbus::Backend: The SDM URI has not the correct number of parameters: only IP address and port (optional) are supported. "
-          "If no port is given MODBUS_TCP_DEFAULT_PORT is considered.");
+  boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(std::string address, std::map<std::string,std::string> parameters) {
+    if(parameters["map"].empty()) {
+      throw ChimeraTK::logic_error("Map file name not specified.");
+    }
+    ModbusType type;
+    if(parameters["type"].empty()) {
+      throw ChimeraTK::logic_error("No modbus type (rtu/tcp) specified.");
     }
 
-    // form server address
-    std::string IPAddress;
-    auto it = parameters.begin();
-    IPAddress = *it;
-    int port = MODBUS_TCP_DEFAULT_PORT;
-    if(parameters.size() == 2){
-      it++;
-      port = std::stoi(std::string(*it));
-    }
+    if(parameters["type"].compare("rtu") == 0)
+      type = rtu;
+    else if (parameters["type"].compare("tcp") == 0)
+      type = tcp;
+    else
+      throw ChimeraTK::logic_error("Unknown modbus type. Available types are: rtu and tcp.");
 
-    return boost::shared_ptr<DeviceBackend> (new ModbusBackend(IPAddress, port, mapFileName));
+    if(type == tcp){
+      if(parameters["port"].empty()) {
+        parameters["port"] = std::to_string(MODBUS_TCP_DEFAULT_PORT);
+      }
+    } else {
+      if(parameters["parity"].empty())
+        parameters["parity"] = "N";
+      if(parameters["data_bits"].empty())
+        parameters["data_bits"] = "8";
+      if(parameters["stop_bits"].empty())
+        parameters["stop_bits"] = "1";
+    }
+    return boost::shared_ptr<DeviceBackend> (new ModbusBackend(address, type, parameters));
   }
 
 

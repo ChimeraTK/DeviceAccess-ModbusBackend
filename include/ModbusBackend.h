@@ -25,12 +25,14 @@ extern std::mutex modubs_mutex;
     uint16_t data16[2];
     int32_t  data32;
   };
+
+  enum ModbusType{ rtu, tcp};
   /** A class to provide the modbus backend."
    *
    */
   class ModbusBackend : public NumericAddressedBackend {
   public:
-    ModbusBackend(std::string IPAddress, int port, std::string mapFileName);
+    ModbusBackend(std::string address, ModbusType _type, std::map<std::string,std::string> parameters);
     virtual ~ModbusBackend(){close();};
 
     virtual void open() override;
@@ -41,8 +43,10 @@ extern std::mutex modubs_mutex;
 
     virtual std::string readDeviceInfo() override {return "Modbus device";};
 
-    static boost::shared_ptr<DeviceBackend> createInstance(std::string host, std::string instance,
-        std::list<std::string> parameters, std::string mapFileName);
+//    static boost::shared_ptr<DeviceBackend> createInstance(std::string host, std::string instance,
+//        std::list<std::string> parameters, std::string mapFileName);
+
+    static boost::shared_ptr<DeviceBackend> createInstance(std::string address, std::map<std::string,std::string> parameters);
 
 
     /** Class to register the backend type with the factory. */
@@ -53,12 +57,11 @@ extern std::mutex modubs_mutex;
     static BackendRegisterer gOneWireBackend;
   private:
     modbus_t *_ctx;
-    std::string _IPAddress;
-    int _port;
+    std::string _address;
+    std::map<std::string,std::string> _parameters;
     bool _opened;
+    ModbusType _type;
   };
 }
-
-
 
 #endif /* INCLUDE_MODBUSBACKEND_H_ */
