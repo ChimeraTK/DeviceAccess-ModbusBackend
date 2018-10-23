@@ -4,15 +4,15 @@ The modbus backend is based on the NumericAddressedBackend. This means registers
 
 The mapping is done using the same parser as ChimeraTK's pcie backend. A typical address in the mapping file loos like:
 
-    sspa.RF_slice.1.current_Idc1            2   18       4     2  32  0 0 RO
+    device.current  2  18  4  2  32  0  0  RO
     
 Here 2 elemnets are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). The bar information (2), width (32), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
 
 The device mapping file syntax is as follows:
 
-    test1 (modbus:168.1.1.1?type=tcp&map=sigma_phi_FI004250.map&port=502)
-    test2 (modbus:myserver?type=tcp&map=sigma_phi_FI004250.map&port=502)
-    test3 (modbus:/dev/ttyUSB0?type=rtu&map=sigma_phi_FI004250.map&parity=N&baud=115200&data_bits=8&stop_bits=1)
+    test1 (modbus:168.1.1.1?type=tcp&map=device.map&port=502)
+    test2 (modbus:myserver?type=tcp&map=device.map&port=502)
+    test3 (modbus:/dev/ttyUSB0?type=rtu&map=device.map&parity=N&baud=115200&data_bits=8&stop_bits=1)
 
 As can be seen in the example above two types of modbus communication are supported:
  - type: rtu
@@ -30,7 +30,7 @@ Both offer different additional parameters. If no parameters are given the follo
 
 SDM URI is only supported using default settings as listed above:
     
-    test1 sdm://./modbus=168.1.1.1:tcp  sigma_phi_FI004250.map
+    test1 sdm://./modbus=168.1.1.1:tcp  device.map
     
 
 ## Remark 
