@@ -69,7 +69,6 @@ std::mutex modubus_mutex;
     }
     if (modbus_connect(_ctx) == -1) {
       throw ChimeraTK::runtime_error(std::string("Connection failed: ") + modbus_strerror(errno));
-      modbus_free(_ctx);
     }
 #else
     std::cout << "Running in test mode" << std::endl;
@@ -88,6 +87,11 @@ std::mutex modubus_mutex;
     }
 #endif
     _opened = false;
+  }
+
+  void ModbusBackend::reconnect(){
+    close();
+    open();
   }
 
   boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(std::string address, std::map<std::string,std::string> parameters) {
@@ -123,6 +127,8 @@ std::mutex modubus_mutex;
 
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
+    if(!_opened)
+      reconnect();
     std::lock_guard<std::mutex> lock(modubus_mutex);
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
@@ -133,6 +139,13 @@ std::mutex modubus_mutex;
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
     if (rc == -1) {
       std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
+      // broken pipe
+      if(errno == 32){
+        _opened = false;
+      // connection timed out
+      } else if(errno == 110){
+        _opened = false;
+      }
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
@@ -166,6 +179,8 @@ std::mutex modubus_mutex;
   }
 
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+    if(!_opened)
+      reconnect();
     std::lock_guard<std::mutex> lock(modubus_mutex);
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
@@ -176,6 +191,17 @@ std::mutex modubus_mutex;
     }
 
     int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
+    if (rc == -1) {
+      std::cerr << "Failed writing address: " << address << " (length: " << length << ")" << std::endl;
+      // broken pipe
+      if(errno == 32){
+        _opened = false;
+      // connection timed out
+      } else if(errno == 110){
+        _opened = false;
+      }
+      throw ChimeraTK::runtime_error(modbus_strerror(errno));
+    }
     if(rc != (int)length){
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
