@@ -17,7 +17,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-dynamic
 
 FIND_PACKAGE(Boost COMPONENTS thread system REQUIRED)
 
-find_library(MODBUS  libmodbus NAMES libmodbus.so.5)
+find_library(MODBUS  libmodbus NAMES libmodbus.so)
 
 if(MODBUS)
   message(STATUS "libmodbus was found: ${MODBUS}")
