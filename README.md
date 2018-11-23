@@ -6,7 +6,7 @@ The mapping is done using the same parser as ChimeraTK's pcie backend. A typical
 
     device.current  2  18  4  2  32  0  0  RO
     
-Here 2 elemnets are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). The bar information (2), width (32), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
+Here 2 elements are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). The bar information (2), width (32), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
 
 The device mapping file syntax is as follows:
 
