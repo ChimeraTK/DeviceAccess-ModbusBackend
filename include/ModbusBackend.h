@@ -55,7 +55,7 @@ extern std::mutex modubs_mutex;
       public:
         BackendRegisterer();
     };
-    static BackendRegisterer gOneWireBackend;
+    static BackendRegisterer gModbusBackend;
   private:
     modbus_t *_ctx;
     std::string _address;

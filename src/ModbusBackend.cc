@@ -23,11 +23,11 @@ extern "C"{
 }
 
 namespace ChimeraTK{
-std::mutex modubus_mutex;
+std::mutex modbus_mutex;
 
 /********************************************************************************************************************/
 
-  ModbusBackend::BackendRegisterer ModbusBackend::gOneWireBackend;
+  ModbusBackend::BackendRegisterer ModbusBackend::gModbusBackend;
 
   ModbusBackend::BackendRegisterer::BackendRegisterer() {
     BackendFactory::getInstance().registerBackendType("modbus", &ModbusBackend::createInstance, {"type", "map"});
@@ -129,7 +129,7 @@ std::mutex modubus_mutex;
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
     if(!_opened)
       reconnect();
-    std::lock_guard<std::mutex> lock(modubus_mutex);
+    std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
       length = 1;
@@ -181,7 +181,7 @@ std::mutex modubus_mutex;
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
     if(!_opened)
       reconnect();
-    std::lock_guard<std::mutex> lock(modubus_mutex);
+    std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
     uint16_t tab_reg[length];
