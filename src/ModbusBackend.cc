@@ -127,9 +127,9 @@ std::mutex modbus_mutex;
 
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
+    std::lock_guard<std::mutex> lock(modbus_mutex);
     if(!_opened)
       reconnect();
-    std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
       length = 1;
