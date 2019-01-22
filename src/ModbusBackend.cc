@@ -139,13 +139,8 @@ std::mutex modbus_mutex;
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
     if (rc == -1) {
       std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      // broken pipe
-      if(errno == 32){
-        _opened = false;
-      // connection timed out
-      } else if(errno == 110){
-        _opened = false;
-      }
+      std::cerr << "Device will be closed." << std::endl;
+      close();
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
@@ -179,9 +174,9 @@ std::mutex modbus_mutex;
   }
 
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+    std::lock_guard<std::mutex> lock(modbus_mutex);
     if(!_opened)
       reconnect();
-    std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
     uint16_t tab_reg[length];
@@ -193,13 +188,8 @@ std::mutex modbus_mutex;
     int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
     if (rc == -1) {
       std::cerr << "Failed writing address: " << address << " (length: " << length << ")" << std::endl;
-      // broken pipe
-      if(errno == 32){
-        _opened = false;
-      // connection timed out
-      } else if(errno == 110){
-        _opened = false;
-      }
+      std::cerr << "Device will be closed." << std::endl;
+      close();
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
