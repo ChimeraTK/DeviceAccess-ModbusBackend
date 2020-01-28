@@ -37,7 +37,6 @@ extern std::mutex modubs_mutex;
 
     virtual void open() override;
     virtual void close() override;
-    void reconnect();
 
     virtual void read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes) override;
     virtual void write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes) override;
@@ -56,6 +55,8 @@ extern std::mutex modubs_mutex;
         BackendRegisterer();
     };
     static BackendRegisterer gModbusBackend;
+  protected:
+    bool isFunctional() const override;
   private:
     modbus_t *_ctx;
     std::string _address;

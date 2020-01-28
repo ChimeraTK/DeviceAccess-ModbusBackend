@@ -89,11 +89,6 @@ std::mutex modbus_mutex;
     _opened = false;
   }
 
-  void ModbusBackend::reconnect(){
-    close();
-    open();
-  }
-
   boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(std::string address, std::map<std::string,std::string> parameters) {
     if(parameters["map"].empty()) {
       throw ChimeraTK::logic_error("Map file name not specified.");
@@ -128,8 +123,6 @@ std::mutex modbus_mutex;
 
   void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    if(!_opened)
-      reconnect();
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
       length = 1;
@@ -145,6 +138,7 @@ std::mutex modbus_mutex;
     }
     if(rc != (int)length){
       std::cerr << "Failed reading address: " << address << " (length: " << length << ")" << std::endl;
+      close();
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
 #else
@@ -175,8 +169,6 @@ std::mutex modbus_mutex;
 
   void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    if(!_opened)
-      reconnect();
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
     uint16_t tab_reg[length];
@@ -193,9 +185,17 @@ std::mutex modbus_mutex;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length){
+      close();
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
     return;
+  }
+
+  bool ModbusBackend::isFunctional() const {
+    if(_opened)
+      return true;
+    else
+      return false;
   }
 }
 

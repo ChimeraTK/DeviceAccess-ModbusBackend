@@ -32,6 +32,10 @@ SDM URI is only supported using default settings as listed above:
     
     test1 sdm://./modbus=168.1.1.1:tcp  device.map
     
+## Connection status
+
+In case of a read/write error the connection is closed. This will trigger an automatic reopening of the connection. In detail, an exception is thrown and `opened` is set `false`.
+This results in `isFunctional()` returning `false`, which will cause the application to call `open()` and the new connection is set.
 
 ## Remark 
 
