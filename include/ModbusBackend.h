@@ -61,7 +61,6 @@ extern std::mutex modubs_mutex;
     modbus_t *_ctx;
     std::string _address;
     std::map<std::string,std::string> _parameters;
-    bool _opened; ///< Indicates if a modbus connection is established
     ModbusType _type;
   };
 }
