@@ -37,8 +37,8 @@ std::mutex modbus_mutex;
 /********************************************************************************************************************/
 
   ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string,std::string> parameters):
-     NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _opened(false), _type(type){
-
+     NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _type(type){
+    _opened = false;
   }
 
   void ModbusBackend::open(){
