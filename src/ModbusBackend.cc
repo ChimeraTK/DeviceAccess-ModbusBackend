@@ -121,7 +121,7 @@ std::mutex modbus_mutex;
   }
 
 
-  void ModbusBackend::read(uint8_t bar, uint32_t address, int32_t* data,  size_t sizeInBytes){
+  void ModbusBackend::read(uint8_t /*bar*/, uint32_t address, int32_t* data,  size_t sizeInBytes){
     std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(int32_t);
     if(length == 0)
@@ -167,7 +167,7 @@ std::mutex modbus_mutex;
     return;
   }
 
-  void ModbusBackend::write(uint8_t bar, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+  void ModbusBackend::write(uint8_t /*bar*/, uint32_t address, int32_t const* data,  size_t sizeInBytes){
     std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t length = sizeInBytes/sizeof(uint32_t);
     int32Touint16 inputData[length];
