@@ -1,0 +1,2 @@
+@LOAD_LIB libChimeraTK-DeviceAccess-ModbusBackend.so
+Dummy  (modbus:dummy?type=tcp&map=dummy.map)

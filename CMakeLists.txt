@@ -1,6 +1,9 @@
 project(ChimeraTK-DeviceAccess-ModbusBackend)
 cmake_minimum_required(VERSION 2.8)
 
+option(BUILD_TESTS "Build tests." ON)
+option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
+
 set(${PROJECT_NAME}_MAJOR_VERSION 00)
 set(${PROJECT_NAME}_MINOR_VERSION 01)
 set(${PROJECT_NAME}_PATCH_VERSION 04)
@@ -15,6 +18,17 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -ggdb")
 # linker flags
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-dynamic")
 
+# optional dependency: BOOST unit test framework needed for tests
+FIND_PACKAGE(Boost COMPONENTS unit_test_framework)
+IF(BUILD_TESTS)
+  IF(Boost_UNIT_TEST_FRAMEWORK_FOUND)
+    set(TESTING_IS_ENABLED "true")
+    ENABLE_TESTING()
+  ELSE()
+    message(" The following packages were not found, so testing will be disabled:")
+    message("  * BOOST unit_test_framework")
+  ENDIF()
+ENDIF(BUILD_TESTS)
 FIND_PACKAGE(Boost COMPONENTS thread system REQUIRED)
 
 find_library(MODBUS  libmodbus NAMES libmodbus.so)
@@ -34,7 +48,6 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src library_sources)
 
 add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
-option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
 if(DUMMY)
   set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
 else()
@@ -42,6 +55,17 @@ else()
 endif(DUMMY)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
 target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
+
+# Create the executables for automated unit testing.
+if(TESTING_IS_ENABLED)
+  add_executable(testModbus test/testModbus.C)
+  target_link_libraries(testModbus ${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES})
+  set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
+  add_test(testModbus testModbus)
+  
+  FILE( COPY ${CMAKE_SOURCE_DIR}/test/dummy.map DESTINATION ${PROJECT_BINARY_DIR})
+  FILE( COPY ${CMAKE_SOURCE_DIR}/test/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
+endif(TESTING_IS_ENABLED)
 
 #Install the library and the executables
 install(TARGETS ${PROJECT_NAME}
