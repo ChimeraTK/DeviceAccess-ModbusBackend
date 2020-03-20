@@ -58,8 +58,8 @@ target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODB
 
 # Create the executables for automated unit testing.
 if(TESTING_IS_ENABLED)
-  add_executable(testModbus tests/testModbus.C)
-  target_link_libraries(testModbus ${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES})
+  add_executable(testModbus ${library_sources} tests/testModbus.C)
+  target_link_libraries(testModbus ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES} ${MODBUS})
   set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
   add_test(testModbus testModbus)
   
