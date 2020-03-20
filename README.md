@@ -6,7 +6,8 @@ The mapping is done using the same parser as ChimeraTK's pcie backend. A typical
 
     device.current  2  18  4  2  32  0  0  RO
     
-Here 2 elements are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). The bar information (2), width (32), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
+Here 2 elements are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). 
+The width (32) needs to be 32 in any case. It defines the size of the single elements used by the backend, which is 32 because `int32_t` is used. The bar information (2), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend, but it is used e.g. by Qthardmon to interprete the data read from the device. Since in most cases it will be intepreted wrong anyway (see remark below) it does not matter what is set. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
 
 The device mapping file syntax is as follows:
 
@@ -39,7 +40,9 @@ This results in `isFunctional()` returning `false`, which will cause the applica
 
 ## Remark 
 
-Since e.g. information of a float (2 times 16 bit, thus 2 modbus registers) is put into 2 32 bit words it can not be decoded by e.g. Qthardmon. Currently the decoding has to be done in the application. This can be done as follows:
+Since e.g. information of a float (2 times 16 bit, thus 2 modbus registers) is put into 2 32 bit words it can not be decoded by e.g. Qthardmon. 
+When reading such a register one has to use a `ChimeraTK::OneDRegisterAccessor<int>` or in case of an application a `ArrayPollInput<int>` of length 2 (the two 32 bit words).
+Currently the decoding has to be done in the application. This can be done as follows:
 
     union UFloat{
       uint16_t data16[2];
