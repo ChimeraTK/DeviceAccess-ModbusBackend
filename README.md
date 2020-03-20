@@ -62,4 +62,6 @@ Currently the decoding has to be done in the application. This can be done as fo
     
     std::cout << "Resulting float is: " << modbusDataDecoded.fdata << std::endl;
     
-**All this should be done in the backend itself in the future.**
+See also the unit test, which illustrates the decoding and reading from a modbus device.
+    
+**The decoding should be done in the backend itself in the future.**
