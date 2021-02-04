@@ -44,12 +44,28 @@ endforeach()
 
 string(REPLACE " " ";" LIST "${PROJECT_NAME} ${${PROJECT_NAME}_LIBRARIES}")
 foreach(LIBRARY ${LIST})
-  if(LIBRARY MATCHES "/")  # library name contains slashes: link against the a file path name
+  if(LIBRARY MATCHES "/")         # library name contains slashes: link against the a file path name
     set(${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE "${${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE} ${LIBRARY}")
-  else()                   # library name does not contain slashes: link against library with -l option
+  elseif(LIBRARY MATCHES "^-l")   # library name does not contain slashes but already the -l option: directly quote it
+    set(${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE "${${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE} ${LIBRARY}")
+  elseif(LIBRARY MATCHES "::")  # library name is an exported target - we need to resolve it for Makefiles
+    get_property(lib_loc TARGET ${LIBRARY} PROPERTY LOCATION)
+    string(APPEND ${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE " ${lib_loc}")
+  else()                          # link against library with -l option
     set(${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE "${${PROJECT_NAME}_LINKER_FLAGS_MAKEFILE} -l${LIBRARY}")
   endif()
 endforeach()
+
+set(${PROJECT_NAME}_PUBLIC_DEPENDENCIES_L "")
+foreach(DEPENDENCY ${${PROJECT_NAME}_PUBLIC_DEPENDENCIES})
+    string(APPEND ${PROJECT_NAME}_PUBLIC_DEPENDENCIES_L "find_package(${DEPENDENCY} REQUIRED)\n")
+endforeach()
+
+if(TARGET ${PROJECT_NAME})
+  set(${PROJECT_NAME}_HAS_LIBRARY 1)
+else()
+  set(${PROJECT_NAME}_HAS_LIBRARY 0)
+endif()
 
 # we have nested @-statements, so we have to parse twice:
 
