@@ -16,16 +16,16 @@
 // CHIMERATK_DEVICEACCESS_VERSION for version checking when the library is loaded
 // at run time. This function is used to determine that this is a valid DeviceAcces
 // backend library. Just copy this code, sorry for the boiler plate.
-extern "C"{
-  const char * deviceAccessVersionUsedToCompile(){
-    return CHIMERATK_DEVICEACCESS_VERSION;
-  }
+extern "C" {
+const char* deviceAccessVersionUsedToCompile() {
+  return CHIMERATK_DEVICEACCESS_VERSION;
+}
 }
 
-namespace ChimeraTK{
-std::mutex modbus_mutex;
+namespace ChimeraTK {
+  static std::mutex modbus_mutex;
 
-/********************************************************************************************************************/
+  /********************************************************************************************************************/
 
   ModbusBackend::BackendRegisterer ModbusBackend::gModbusBackend;
 
@@ -34,54 +34,57 @@ std::mutex modbus_mutex;
     std::cout << "modbus::BackendRegisterer: registered backend type modbus" << std::endl;
   }
 
-/********************************************************************************************************************/
+  /********************************************************************************************************************/
 
-  ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string,std::string> parameters):
-     NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _type(type){
+  ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string, std::string> parameters)
+  : NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _type(type) {
     _opened = false;
   }
 
-  void ModbusBackend::open(){
-    if (_opened) {
-      throw ChimeraTK::logic_error("modbus::Backend: Device already has been opened");
+  /********************************************************************************************************************/
+
+  void ModbusBackend::open() {
+    if(_opened) {
+      return;
     }
-    if(_type == tcp){
+    if(_type == tcp) {
       std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << ":" << _parameters["port"] << std::endl;
-    } else {
-    std::cout << "modbus::Backend: Connecting to: " << _address.c_str() <<
-        "\n\t baud rate: " << _parameters["baud"] <<
-        "\n\t parity: " << _parameters["parity"] <<
-        "\n\t data bits: " << _parameters["data_bits"] <<
-        "\n\t stop bits: " << _parameters["stop_bits"] << std:: endl;
+    }
+    else {
+      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << "\n\t baud rate: " << _parameters["baud"]
+                << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["data_bits"]
+                << "\n\t stop bits: " << _parameters["stop_bits"] << std::endl;
     }
 #ifndef DUMMY
-    if(_type == tcp){
-       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
-    } else {
-      _ctx = modbus_new_rtu(_address.c_str(),
-          std::stoi(_parameters["baud"]),
-          _parameters["parity"].c_str()[0],
-          std::stoi(_parameters["data_bits"]),
-          std::stoi(_parameters["stop_bits"]));
+    if(_type == tcp) {
+      _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
     }
-    if (_ctx == NULL) {
-      throw ChimeraTK::runtime_error(std::string("modbus::Backend: Unable to allocate libmodbus context: ") + modbus_strerror(errno));
+    else {
+      _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), _parameters["parity"].c_str()[0],
+          std::stoi(_parameters["data_bits"]), std::stoi(_parameters["stop_bits"]));
     }
-    if (modbus_connect(_ctx) == -1) {
+    if(_ctx == NULL) {
+      throw ChimeraTK::runtime_error(
+          std::string("modbus::Backend: Unable to allocate libmodbus context: ") + modbus_strerror(errno));
+    }
+    if(modbus_connect(_ctx) == -1) {
       throw ChimeraTK::runtime_error(std::string("modbus::Backend: Connection failed: ") + modbus_strerror(errno));
     }
 #else
     std::cout << "modbus::Backend: Running in test mode" << std::endl;
-    std::cout << "modbus::Backend: Map file is: " << _parameters["map"] <<std::endl;
+    std::cout << "modbus::Backend: Map file is: " << _parameters["map"] << std::endl;
     std::cout << "modbus::Backend: Type is: " << _type << std::endl;
 
 #endif
     _opened = true;
+    _hasException = false;
   }
 
-  void ModbusBackend::close(){
+  /********************************************************************************************************************/
+
+  void ModbusBackend::close() {
 #ifndef DUMMY
-    if(_opened){
+    if(_opened) {
       modbus_close(_ctx);
       modbus_free(_ctx);
     }
@@ -89,7 +92,10 @@ std::mutex modbus_mutex;
     _opened = false;
   }
 
-  boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(std::string address, std::map<std::string,std::string> parameters) {
+  /********************************************************************************************************************/
+
+  boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(
+      std::string address, std::map<std::string, std::string> parameters) {
     if(parameters["map"].empty()) {
       throw ChimeraTK::logic_error("modbus::Backend: Map file name not specified.");
     }
@@ -100,58 +106,58 @@ std::mutex modbus_mutex;
 
     if(parameters["type"].compare("rtu") == 0)
       type = rtu;
-    else if (parameters["type"].compare("tcp") == 0)
+    else if(parameters["type"].compare("tcp") == 0)
       type = tcp;
     else
       throw ChimeraTK::logic_error("modbus::Backend: Unknown modbus type. Available types are: rtu and tcp.");
 
-    if(type == tcp){
+    if(type == tcp) {
       if(parameters["port"].empty()) {
         parameters["port"] = std::to_string(MODBUS_TCP_DEFAULT_PORT);
       }
-    } else {
-      if(parameters["parity"].empty())
-        parameters["parity"] = "N";
-      if(parameters["data_bits"].empty())
-        parameters["data_bits"] = "8";
-      if(parameters["stop_bits"].empty())
-        parameters["stop_bits"] = "1";
     }
-    return boost::shared_ptr<DeviceBackend> (new ModbusBackend(address, type, parameters));
+    else {
+      if(parameters["parity"].empty()) parameters["parity"] = "N";
+      if(parameters["data_bits"].empty()) parameters["data_bits"] = "8";
+      if(parameters["stop_bits"].empty()) parameters["stop_bits"] = "1";
+    }
+    return boost::shared_ptr<DeviceBackend>(new ModbusBackend(address, type, parameters));
   }
 
+  /********************************************************************************************************************/
 
-  void ModbusBackend::read(uint8_t /*bar*/, uint32_t address, int32_t* data,  size_t sizeInBytes){
+  void ModbusBackend::read(uint8_t /*bar*/, uint32_t address, int32_t* data, size_t sizeInBytes) {
+    if(_hasException) {
+      throw ChimeraTK::runtime_error("previous error detected.");
+    }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t length = sizeInBytes/sizeof(int32_t);
-    if(length == 0)
-      length = 1;
+    size_t length = sizeInBytes / sizeof(int32_t);
+    if(length == 0) length = 1;
     int32_t toFill[length];
     uint16_t tab_reg[length];
 #ifndef DUMMY
     int rc = modbus_read_registers(_ctx, address, length, tab_reg);
-    if (rc == -1) {
+    if(rc == -1) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      std::cerr << "modbus::Backend: Device will be closed." << std::endl;
-      close();
+      _hasException = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
-    if(rc != (int)length){
+    if(rc != (int)length) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      close();
+      _hasException = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
 #else
-//    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
-//    std::cout << "Filling " << length << " elements." << std::endl;
+    //    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
+    //    std::cout << "Filling " << length << " elements." << std::endl;
     int32Touint16 test;
     float myData = 42.42;
     // convert test data to int32_t
     int32_t* pmyData = (int32_t*)&myData;
     test.data32 = *pmyData;
 
-    for(size_t i = 0; i < length; i++){
-      if(i%2 == 0)
+    for(size_t i = 0; i < length; i++) {
+      if(i % 2 == 0)
         tab_reg[i] = test.data16[0];
       else
         tab_reg[i] = test.data16[1];
@@ -159,43 +165,51 @@ std::mutex modbus_mutex;
 #endif
     int32Touint16 tmp;
     tmp.data16[1] = 0;
-    for(size_t i = 0; i < length; i++){
+    for(size_t i = 0; i < length; i++) {
       tmp.data16[0] = tab_reg[i];
       toFill[i] = tmp.data32;
     }
-    memcpy((void*)data, &toFill[0], length*sizeof(int32_t));
+    memcpy((void*)data, &toFill[0], length * sizeof(int32_t));
     return;
   }
 
-  void ModbusBackend::write(uint8_t /*bar*/, uint32_t address, int32_t const* data,  size_t sizeInBytes){
+  /********************************************************************************************************************/
+
+  void ModbusBackend::write(uint8_t /*bar*/, uint32_t address, int32_t const* data, size_t sizeInBytes) {
+    if(_hasException) {
+      throw ChimeraTK::runtime_error("previous error detected.");
+    }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t length = sizeInBytes/sizeof(uint32_t);
+    size_t length = sizeInBytes / sizeof(uint32_t);
     int32Touint16 inputData[length];
     uint16_t tab_reg[length];
-    for(size_t i = 0; i < length; i++){
+    for(size_t i = 0; i < length; i++) {
       inputData[i].data32 = data[i];
       tab_reg[i] = inputData[i].data16[0];
     }
 
     int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
-    if (rc == -1) {
+    if(rc == -1) {
       std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
-      std::cerr << "modbus::Backend: Device will be closed." << std::endl;
-      close();
+      _hasException = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
-    if(rc != (int)length){
-      close();
+    if(rc != (int)length) {
+      _hasException = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
     return;
   }
 
+  /********************************************************************************************************************/
+
   bool ModbusBackend::isFunctional() const {
-    if(_opened)
+    if(_opened && !_hasException)
       return true;
     else
       return false;
   }
-}
 
+  /********************************************************************************************************************/
+
+} // namespace ChimeraTK
