@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 2.8)
 option(BUILD_TESTS "Build tests." ON)
 option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
 
-set(${PROJECT_NAME}_MAJOR_VERSION 00)
-set(${PROJECT_NAME}_MINOR_VERSION 01)
-set(${PROJECT_NAME}_PATCH_VERSION 04)
+set(${PROJECT_NAME}_MAJOR_VERSION 01)
+set(${PROJECT_NAME}_MINOR_VERSION 00)
+set(${PROJECT_NAME}_PATCH_VERSION 00)
 include(cmake/set_version_numbers.cmake)
 
 #Moderate version of the compiler flags
@@ -40,7 +40,7 @@ else()
 endif(MODBUS)
 
 include(cmake/add_dependency.cmake)
-add_dependency(ChimeraTK-DeviceAccess 00.29 REQUIRED)
+add_dependency(ChimeraTK-DeviceAccess 02.03 REQUIRED)
 
 include_directories( include )
 
