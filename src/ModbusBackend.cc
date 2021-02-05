@@ -126,17 +126,30 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::read(uint8_t /*bar*/, uint32_t address, int32_t* data, size_t sizeInBytes) {
+  void ModbusBackend::read(uint8_t bar, uint32_t addressInBytes, int32_t* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t length = sizeInBytes / sizeof(int32_t);
+    if(addressInBytes % 2 != 0) {
+      throw ChimeraTK::runtime_error("Address must be multiple of 2.");
+    }
+    size_t address = addressInBytes / 2;
+    size_t length = sizeInBytes / 2;
     if(length == 0) length = 1;
-    int32_t toFill[length];
-    uint16_t tab_reg[length];
-#ifndef DUMMY
-    int rc = modbus_read_registers(_ctx, address, length, tab_reg);
+
+    int rc;
+    if(bar == 3) {
+      rc = modbus_read_registers(_ctx, address, length, (uint16_t*)data);
+    }
+    else if(bar == 4) {
+      rc = modbus_read_input_registers(_ctx, address, length, (uint16_t*)data);
+    }
+    else {
+      throw ChimeraTK::runtime_error(
+          "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
+    }
+
     if(rc == -1) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       _hasException = true;
@@ -147,48 +160,28 @@ namespace ChimeraTK {
       _hasException = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
-#else
-    //    std::cout << "Attempt to read bar: " << unsigned(bar) << " address: " << address << " sizeInBytes: " << sizeInBytes << std::endl;
-    //    std::cout << "Filling " << length << " elements." << std::endl;
-    int32Touint16 test;
-    float myData = 42.42;
-    // convert test data to int32_t
-    int32_t* pmyData = (int32_t*)&myData;
-    test.data32 = *pmyData;
 
-    for(size_t i = 0; i < length; i++) {
-      if(i % 2 == 0)
-        tab_reg[i] = test.data16[0];
-      else
-        tab_reg[i] = test.data16[1];
-    }
-#endif
-    int32Touint16 tmp;
-    tmp.data16[1] = 0;
-    for(size_t i = 0; i < length; i++) {
-      tmp.data16[0] = tab_reg[i];
-      toFill[i] = tmp.data32;
-    }
-    memcpy((void*)data, &toFill[0], length * sizeof(int32_t));
     return;
   }
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::write(uint8_t /*bar*/, uint32_t address, int32_t const* data, size_t sizeInBytes) {
+  void ModbusBackend::write(uint8_t bar, uint32_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t length = sizeInBytes / sizeof(uint32_t);
-    int32Touint16 inputData[length];
-    uint16_t tab_reg[length];
-    for(size_t i = 0; i < length; i++) {
-      inputData[i].data32 = data[i];
-      tab_reg[i] = inputData[i].data16[0];
-    }
+    size_t address = addressInBytes / 2;
+    size_t length = sizeInBytes / 2;
 
-    int rc = modbus_write_registers(_ctx, address, length, &tab_reg[0]);
+    int rc;
+    if(bar == 3) {
+      rc = modbus_write_registers(_ctx, address, length, (uint16_t*)data);
+    }
+    else {
+      throw ChimeraTK::runtime_error(
+          "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
+    }
     if(rc == -1) {
       std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
       _hasException = true;
