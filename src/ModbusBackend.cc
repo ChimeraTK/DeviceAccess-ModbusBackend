@@ -179,7 +179,12 @@ namespace ChimeraTK {
 
     int rc;
     if(bar == 3) {
-      rc = modbus_write_registers(_ctx, address, length, (uint16_t*)data);
+      if(length == 1) {
+        rc = modbus_write_register(_ctx, address, *((uint16_t*)data));
+      }
+      else {
+        rc = modbus_write_registers(_ctx, address, length, (uint16_t*)data);
+      }
     }
     else {
       throw ChimeraTK::runtime_error(
