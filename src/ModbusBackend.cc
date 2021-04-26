@@ -51,9 +51,10 @@ namespace ChimeraTK {
       std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << ":" << _parameters["port"] << std::endl;
     }
     else {
-      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << "\n\t baud rate: " << _parameters["baud"]
-                << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["data_bits"]
-                << "\n\t stop bits: " << _parameters["stop_bits"] << std::endl;
+      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << " slave id:" << _parameters["slaveid"]
+                << "\n\t baud rate: " << _parameters["baud"]
+                << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["databits"]
+                << "\n\t stop bits: " << _parameters["stopbits"] << std::endl;
     }
 #ifndef DUMMY
     if(_type == tcp) {
@@ -61,7 +62,8 @@ namespace ChimeraTK {
     }
     else {
       _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), _parameters["parity"].c_str()[0],
-          std::stoi(_parameters["data_bits"]), std::stoi(_parameters["stop_bits"]));
+          std::stoi(_parameters["databits"]), std::stoi(_parameters["stopbits"]));
+      modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"]));
     }
     if(_ctx == NULL) {
       throw ChimeraTK::runtime_error(
@@ -118,8 +120,9 @@ namespace ChimeraTK {
     }
     else {
       if(parameters["parity"].empty()) parameters["parity"] = "N";
-      if(parameters["data_bits"].empty()) parameters["data_bits"] = "8";
-      if(parameters["stop_bits"].empty()) parameters["stop_bits"] = "1";
+      if(parameters["databits"].empty()) parameters["databits"] = "8";
+      if(parameters["stopbits"].empty()) parameters["stopbits"] = "1";
+      if(parameters["slaveid"].empty()) parameters["slaveid"] = "1";
     }
     return boost::shared_ptr<DeviceBackend>(new ModbusBackend(address, type, parameters));
   }
