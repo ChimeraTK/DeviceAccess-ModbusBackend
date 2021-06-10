@@ -129,7 +129,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::read(uint8_t bar, uint32_t addressInBytes, int32_t* data, size_t sizeInBytes) {
+  void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
@@ -169,7 +169,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::write(uint8_t bar, uint32_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
+  void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
