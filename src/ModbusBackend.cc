@@ -204,6 +204,12 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
+  bool ModbusBackend::barIndexValid(uint64_t bar) {
+    return (bar == 3) || (bar == 4);
+  }
+
+  /********************************************************************************************************************/
+
   bool ModbusBackend::isFunctional() const {
     if(_opened && !_hasException)
       return true;

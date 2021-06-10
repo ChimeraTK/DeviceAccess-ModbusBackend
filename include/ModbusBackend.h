@@ -42,8 +42,7 @@ namespace ChimeraTK {
 
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
-    void read(uint8_t bar, uint32_t address, int32_t* data, size_t sizeInBytes) override;
-    void write(uint8_t bar, uint32_t address, int32_t const* data, size_t sizeInBytes) override;
+    bool barIndexValid(uint64_t bar) override;
 
     std::string readDeviceInfo() override { return "Modbus device"; };
 
