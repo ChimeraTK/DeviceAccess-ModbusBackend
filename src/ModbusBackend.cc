@@ -119,8 +119,9 @@ namespace ChimeraTK {
       if(parameters["port"].empty()) {
         parameters["port"] = std::to_string(MODBUS_TCP_DEFAULT_PORT);
       }
-      // 255 is default slave ID for TCP - see MODBUS_TCP_SLAVE in libmodbus
-      if(parameters["slaveid"].empty()) parameters["slaveid"] = "255";
+      if(parameters["slaveid"].empty()) {
+        parameters["slaveid"] = std::to_string(MODBUS_TCP_SLAVE);
+      }
     }
     else {
       if(parameters["baud"].empty()) parameters["baud"] = "115200";
