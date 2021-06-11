@@ -123,6 +123,7 @@ namespace ChimeraTK {
       if(parameters["slaveid"].empty()) parameters["slaveid"] = "255";
     }
     else {
+      if(parameters["baud"].empty()) parameters["baud"] = "115200";
       if(parameters["parity"].empty()) parameters["parity"] = "N";
       if(parameters["databits"].empty()) parameters["databits"] = "8";
       if(parameters["stopbits"].empty()) parameters["stopbits"] = "1";
