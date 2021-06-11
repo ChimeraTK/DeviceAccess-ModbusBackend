@@ -17,7 +17,6 @@
 #include "ChimeraTK/NumericAddressedBackend.h"
 
 namespace ChimeraTK {
-  extern std::mutex modubs_mutex;
   /**
    * Union used to put uint16_t data into int32_t.
    */
