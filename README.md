@@ -12,7 +12,7 @@ The width (32) needs to be 32 in any case. It defines the size of the single ele
 The device mapping file syntax is as follows:
 
     test1 (modbus:168.1.1.1?type=tcp&map=device.map&port=502)
-    test2 (modbus:myserver?type=tcp&map=device.map&port=502)
+    test2 (modbus:myserver?type=tcp&map=device.map&port=502&slaveid=2)
     test3 (modbus:/dev/ttyUSB0?type=rtu&map=device.map&parity=N&baud=115200&data_bits=8&stop_bits=1)
 
 As can be seen in the example above two types of modbus communication are supported:
@@ -26,8 +26,10 @@ Both offer different additional parameters. If no parameters are given the follo
     baud = 115200
     data bits = 8
     stop bits = 1 (other allowed value is 2)
+    slaveid = 1
 * tcp: 
     port = 502
+    slaveid = 255
 
 SDM URI is only supported using default settings as listed above:
     
