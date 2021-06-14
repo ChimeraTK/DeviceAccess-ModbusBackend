@@ -63,11 +63,13 @@ namespace ChimeraTK {
     else {
       _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), _parameters["parity"].c_str()[0],
           std::stoi(_parameters["databits"]), std::stoi(_parameters["stopbits"]));
-      modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"]));
     }
     if(_ctx == NULL) {
       throw ChimeraTK::runtime_error(
           std::string("modbus::Backend: Unable to allocate libmodbus context: ") + modbus_strerror(errno));
+    }
+    if(modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"])) < 0) {
+      throw ChimeraTK::runtime_error(std::string("modbus::Backend: Set slave ID failed: ") + modbus_strerror(errno));
     }
     if(modbus_connect(_ctx) == -1) {
       throw ChimeraTK::runtime_error(std::string("modbus::Backend: Connection failed: ") + modbus_strerror(errno));
@@ -117,8 +119,12 @@ namespace ChimeraTK {
       if(parameters["port"].empty()) {
         parameters["port"] = std::to_string(MODBUS_TCP_DEFAULT_PORT);
       }
+      if(parameters["slaveid"].empty()) {
+        parameters["slaveid"] = std::to_string(MODBUS_TCP_SLAVE);
+      }
     }
     else {
+      if(parameters["baud"].empty()) parameters["baud"] = "115200";
       if(parameters["parity"].empty()) parameters["parity"] = "N";
       if(parameters["databits"].empty()) parameters["databits"] = "8";
       if(parameters["stopbits"].empty()) parameters["stopbits"] = "1";
