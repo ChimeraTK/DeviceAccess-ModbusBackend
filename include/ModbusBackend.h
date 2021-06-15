@@ -17,7 +17,6 @@
 #include "ChimeraTK/NumericAddressedBackend.h"
 
 namespace ChimeraTK {
-  extern std::mutex modubs_mutex;
   /**
    * Union used to put uint16_t data into int32_t.
    */
@@ -40,8 +39,9 @@ namespace ChimeraTK {
     //\ToDo: Check if it is possible/works. For now just do not allow merge requests.
     bool canMergeRequests() const override { return false; }
 
-    void read(uint8_t bar, uint32_t address, int32_t* data, size_t sizeInBytes) override;
-    void write(uint8_t bar, uint32_t address, int32_t const* data, size_t sizeInBytes) override;
+    void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
+    void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
+    bool barIndexValid(uint64_t bar) override;
 
     std::string readDeviceInfo() override { return "Modbus device"; };
 

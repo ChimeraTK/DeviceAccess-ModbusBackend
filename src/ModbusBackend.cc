@@ -135,7 +135,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::read(uint8_t bar, uint32_t addressInBytes, int32_t* data, size_t sizeInBytes) {
+  void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
@@ -175,7 +175,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::write(uint8_t bar, uint32_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
+  void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
     if(_hasException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
@@ -206,6 +206,12 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
     return;
+  }
+
+  /********************************************************************************************************************/
+
+  bool ModbusBackend::barIndexValid(uint64_t bar) {
+    return (bar == 3) || (bar == 4);
   }
 
   /********************************************************************************************************************/
