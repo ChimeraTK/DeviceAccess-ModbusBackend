@@ -57,15 +57,16 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-
 target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
 
 # Create the executables for automated unit testing.
-if(TESTING_IS_ENABLED)
-  add_executable(testModbus ${library_sources} tests/testModbus.C)
-  target_link_libraries(testModbus ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES} ${MODBUS})
-  set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
-  add_test(testModbus testModbus)
+# Disabled until issue #7 is fixed. 
+#if(TESTING_IS_ENABLED)
+#  add_executable(testModbus ${library_sources} tests/testModbus.C)
+#  target_link_libraries(testModbus ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES} ${MODBUS})
+#  set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
+#  add_test(testModbus testModbus)
   
-  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/dummy.map DESTINATION ${PROJECT_BINARY_DIR})
-  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
-endif(TESTING_IS_ENABLED)
+#  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/dummy.map DESTINATION ${PROJECT_BINARY_DIR})
+#  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
+#endif(TESTING_IS_ENABLED)
 
 #Install the library and the executables
 install(TARGETS ${PROJECT_NAME}
