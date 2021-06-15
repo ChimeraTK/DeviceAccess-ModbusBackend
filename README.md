@@ -4,10 +4,10 @@ The modbus backend is based on the NumericAddressedBackend. This means registers
 
 The mapping is done using the same parser as ChimeraTK's pcie backend. A typical address in the mapping file loos like:
 
-    device.current  2  18  4  2  32  0  0  RO
+    device.current  2  18  4  3  32  0  0  RO
     
 Here 2 elements are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). 
-The width (32) needs to be 32 in any case. It defines the size of the single elements used by the backend, which is 32 because `int32_t` is used. The bar information (2), number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend, but it is used e.g. by Qthardmon to interprete the data read from the device. Since in most cases it will be intepreted wrong anyway (see remark below) it does not matter what is set. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
+The width (32) needs to be 32 in any case. It defines the size of the single elements used by the backend, which is 32 because `int32_t` is used. The bar information (3) is used either read holding registers (`bar=3`) or to read input registers (`bar=4`). The holding registers and input registers have different historical meaning, but nowadays it’s more common to use holding registers only. The number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend, but it is used e.g. by Qthardmon to interprete the data read from the device. Since in most cases it will be intepreted wrong anyway (see remark below) it does not matter what is set. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
 
 The device mapping file syntax is as follows:
 
