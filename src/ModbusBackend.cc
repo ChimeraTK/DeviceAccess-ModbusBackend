@@ -86,7 +86,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::close() {
+  void ModbusBackend::closeImpl() {
 #ifndef DUMMY
     if(_opened) {
       modbus_close(_ctx);

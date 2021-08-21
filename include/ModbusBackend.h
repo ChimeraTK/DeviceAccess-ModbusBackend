@@ -35,7 +35,7 @@ namespace ChimeraTK {
     ~ModbusBackend() override { close(); };
 
     void open() override;
-    void close() override;
+    void closeImpl() override;
     //\ToDo: Check if it is possible/works. For now just do not allow merge requests.
     bool canMergeRequests() const override { return false; }
 
@@ -47,8 +47,6 @@ namespace ChimeraTK {
 
     static boost::shared_ptr<DeviceBackend> createInstance(
         std::string address, std::map<std::string, std::string> parameters);
-
-    void setException() override { _hasException = true; }
 
     /** Class to register the backend type with the factory. */
     class BackendRegisterer {
