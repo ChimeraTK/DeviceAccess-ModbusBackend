@@ -56,7 +56,6 @@ namespace ChimeraTK {
                 << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["databits"]
                 << "\n\t stop bits: " << _parameters["stopbits"] << std::endl;
     }
-#ifndef DUMMY
     if(_type == tcp) {
       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
     }
@@ -74,12 +73,7 @@ namespace ChimeraTK {
     if(modbus_connect(_ctx) == -1) {
       throw ChimeraTK::runtime_error(std::string("modbus::Backend: Connection failed: ") + modbus_strerror(errno));
     }
-#else
-    std::cout << "modbus::Backend: Running in test mode" << std::endl;
-    std::cout << "modbus::Backend: Map file is: " << _parameters["map"] << std::endl;
-    std::cout << "modbus::Backend: Type is: " << _type << std::endl;
 
-#endif
     auto disable_merging_str = _parameters.find("disableMerging");
     if(disable_merging_str != _parameters.end()) {
       _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
@@ -91,13 +85,11 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::closeImpl() {
-#ifndef DUMMY
     if(_opened) {
+      _opened = false;
       modbus_close(_ctx);
       modbus_free(_ctx);
     }
-#endif
-    _opened = false;
   }
 
   /********************************************************************************************************************/
