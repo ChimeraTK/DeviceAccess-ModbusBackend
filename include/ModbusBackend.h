@@ -36,8 +36,7 @@ namespace ChimeraTK {
 
     void open() override;
     void close() override;
-    //\ToDo: Check if it is possible/works. For now just do not allow merge requests.
-    bool canMergeRequests() const override { return false; }
+    bool canMergeRequests() const override { return true; }
 
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
