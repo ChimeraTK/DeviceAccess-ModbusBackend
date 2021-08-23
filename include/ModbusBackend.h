@@ -37,6 +37,8 @@ namespace ChimeraTK {
     void open() override;
     void close() override;
     bool canMergeRequests() const override { return _mergingEnabled; }
+    // Modbus registers are always 16 bit wide
+    size_t minimumTransferAlignment() const override { return 2; }
 
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
