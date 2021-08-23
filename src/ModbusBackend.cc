@@ -80,6 +80,10 @@ namespace ChimeraTK {
     std::cout << "modbus::Backend: Type is: " << _type << std::endl;
 
 #endif
+    auto disable_merging_str = _parameters.find("disableMerging");
+    if(disable_merging_str != _parameters.end()) {
+      _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
+    }
     _opened = true;
     _hasException = false;
   }

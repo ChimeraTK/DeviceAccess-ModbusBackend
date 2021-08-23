@@ -2,12 +2,14 @@
 
 The modbus backend is based on the NumericAddressedBackend. This means registers are accessed via an address. Currently the NumericAdressedBacked uses uint32\_t words, but modbus is using uint16\_t words. In consequence, when reading a modbus word (16 bit) the result is a 32 bit word, where only the first 16 bits are used.
 
-The mapping is done using the same parser as ChimeraTK's pcie backend. A typical address in the mapping file loos like:
+The mapping is done using the same parser as ChimeraTK's pcie backend. Since Modbus registers are 16 bits (2 bytes) wide, the address is the modbus register index times 2. A typical address in the mapping file looks like:
 
     device.current  2  18  4  3  32  0  0  RO
     
-Here 2 elements are read starting from address 18. The total resulting length is 4 byte (2 times 16 bits). 
+Here 2 elements are read starting from address 18 (register 9). The total resulting length is 4 byte (2 times 16 bits). 
 The width (32) needs to be 32 in any case. It defines the size of the single elements used by the backend, which is 32 because `int32_t` is used. The bar information (3) is used either read holding registers (`bar=3`) or to read input registers (`bar=4`). The holding registers and input registers have different historical meaning, but nowadays it’s more common to use holding registers only. The number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend, but it is used e.g. by Qthardmon to interprete the data read from the device. Since in most cases it will be intepreted wrong anyway (see remark below) it does not matter what is set. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
+
+Reads/writes of consecutive registers can be merged into single multi-register accesses. To disable this (e.g. for broken Modbus servers), the parameter `disableMerging` can be set.
 
 The device mapping file syntax is as follows:
 
@@ -27,9 +29,11 @@ Both offer different additional parameters. If no parameters are given the follo
     data bits = 8
     stop bits = 1 (other allowed value is 2)
     slaveid = 1
+    disableMerging = 0
 * tcp: 
     port = 502
     slaveid = 255
+    disableMerging = 0
 
 SDM URI is only supported using default settings as listed above:
     
