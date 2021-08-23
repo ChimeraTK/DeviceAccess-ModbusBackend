@@ -36,7 +36,7 @@ namespace ChimeraTK {
 
     void open() override;
     void close() override;
-    bool canMergeRequests() const override { return true; }
+    bool canMergeRequests() const override { return _mergingEnabled; }
 
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
@@ -65,6 +65,7 @@ namespace ChimeraTK {
     std::map<std::string, std::string> _parameters;
     ModbusType _type;
     std::atomic<bool> _hasException = {false};
+    bool _mergingEnabled = true;
   };
 } // namespace ChimeraTK
 
