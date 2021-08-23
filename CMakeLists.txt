@@ -5,7 +5,7 @@ option(BUILD_TESTS "Build tests." ON)
 option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
 
 set(${PROJECT_NAME}_MAJOR_VERSION 01)
-set(${PROJECT_NAME}_MINOR_VERSION 02)
+set(${PROJECT_NAME}_MINOR_VERSION 03)
 set(${PROJECT_NAME}_PATCH_VERSION 00)
 include(cmake/set_version_numbers.cmake)
 
@@ -40,7 +40,7 @@ else()
 endif(MODBUS)
 
 include(cmake/add_dependency.cmake)
-add_dependency(ChimeraTK-DeviceAccess 02.04 REQUIRED)
+add_dependency(ChimeraTK-DeviceAccess 02.06 REQUIRED)
 
 include_directories( include )
 

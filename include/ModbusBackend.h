@@ -35,7 +35,7 @@ namespace ChimeraTK {
     ~ModbusBackend() override { close(); };
 
     void open() override;
-    void close() override;
+    void closeImpl() override;
     bool canMergeRequests() const override { return _mergingEnabled; }
 
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
@@ -46,8 +46,6 @@ namespace ChimeraTK {
 
     static boost::shared_ptr<DeviceBackend> createInstance(
         std::string address, std::map<std::string, std::string> parameters);
-
-    void setException() override { _hasException = true; }
 
     /** Class to register the backend type with the factory. */
     class BackendRegisterer {
