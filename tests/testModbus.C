@@ -7,17 +7,20 @@
 
 #define BOOST_TEST_MODULE ModbusTest
 
+#include "ModbusBackend.h"
 
 #include <ChimeraTK/Device.h>
-#include "ModbusBackend.h"
+#include <ChimeraTK/UnifiedBackendTest.h>
 
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
-#define BOOST_NO_EXCEPTIONS
+//#define BOOST_NO_EXCEPTIONS
 #include <boost/test/included/unit_test.hpp>
-#undef BOOST_NO_EXCEPTIONS
+//#undef BOOST_NO_EXCEPTIONS
 using namespace boost::unit_test_framework;
+
+using namespace ChimeraTK;
 
 /**********************************************************************************************************************/
 
@@ -50,23 +53,23 @@ struct ModbusTestServer {
   int serverPort() { return _serverPort; }
 
   struct map_holding {
-    int16_t reg1;
-    int16_t reg2;
-    uint16_t reg3;
-    int16_t reg4_raw;
-    int32_t reg32;
-    float reg754;
+    int16_t reg1[1];
+    int16_t reg2[1];
+    uint16_t reg3[1];
+    int16_t reg4_raw[1];
+    int32_t reg32[1];
+    float reg754[1];
   };
   struct map_input {
-    int16_t reg1;
-    int16_t reg2;
+    int16_t reg1[1];
+    int16_t reg2[1];
   };
 
-  const map_holding& getHolding() const { return _map_holding; }
-  void setHolding(const map_holding& v) { _map_holding = v; }
+  std::unique_lock<std::mutex> getLock() { return std::unique_lock<std::mutex>(_mx_mapping); }
+  map_holding& getHolding() { return _map_holding; }
+  map_input& getInput() { return _map_input; }
 
-  const map_input& getInput() const { return _map_input; }
-  void setInput(const map_input& v) { _map_input = v; }
+  void setException(bool enable) { _exception = enable; }
 
  protected:
   void theServer() {
@@ -134,8 +137,15 @@ struct ModbusTestServer {
           static uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH]; // static to prevent need for big stack
           int rc = modbus_receive(ctx, query);
           if(rc > 0) {
-            std::unique_lock<std::mutex> lk(_mx_mapping);
-            modbus_reply(ctx, query, rc, &_mapping);
+            if(!_exception) {
+              std::cout << "Incoming request on " << master_socket << " (no exception)\n";
+              std::unique_lock<std::mutex> lk(_mx_mapping);
+              modbus_reply(ctx, query, rc, &_mapping);
+            }
+            else {
+              std::cout << "Incoming request on " << master_socket << " (exception reply)\n";
+              modbus_reply_exception(ctx, query, MODBUS_EXCEPTION_NOT_DEFINED);
+            }
           }
           else if(rc == -1) {
             std::cout << "Error on socket " << master_socket << "\n";
@@ -159,9 +169,90 @@ struct ModbusTestServer {
   std::thread _serverThread;
 
   std::atomic<bool> _shutdown{false};
+  std::atomic<bool> _exception{false};
 };
 ModbusTestServer testServer;
 
+/**********************************************************************************************************************/
+
+template<typename Derived, typename RAW_USER_TYPE>
+struct RegisterDefaults {
+  Derived* derived{static_cast<Derived*>(this)};
+
+  typedef RAW_USER_TYPE rawUserType;
+
+  bool isReadable() { return true; }
+  ChimeraTK::AccessModeFlags supportedFlags() { return {ChimeraTK::AccessMode::raw}; }
+  size_t nChannels() { return 1; }
+  size_t writeQueueLength() { return std::numeric_limits<size_t>::max(); }
+  size_t nRuntimeErrorCases() { return 1; }
+
+  static constexpr auto capabilities = TestCapabilities<>()
+                                           .disableForceDataLossWrite()
+                                           .disableAsyncReadInconsistency()
+                                           .disableSwitchReadOnly()
+                                           .disableSwitchWriteOnly()
+                                           .disableTestWriteNeverLosesData();
+
+  template<typename UserType>
+  UserType rawToCooked(rawUserType rv) {
+    return ChimeraTK::numericToUserType<UserType>(rv / derived->rawPerCooked);
+  }
+
+  template<typename UserType>
+  std::vector<std::vector<UserType>> generateValue() {
+    auto lk = testServer.getLock();
+    auto val = testServer.getHolding().*(derived->pReg);
+    std::vector<UserType> rval(derived->nElementsPerChannel());
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      rval[i] = rawToCooked<UserType>(val[i] + derived->delta + i);
+    }
+    return {rval};
+  }
+
+  template<typename UserType>
+  std::vector<std::vector<UserType>> getRemoteValue() {
+    auto lk = testServer.getLock();
+    auto* val = testServer.getHolding().*(derived->pReg);
+    std::vector<UserType> rval(derived->nElementsPerChannel());
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      rval[i] = rawToCooked<UserType>(val[i]);
+    }
+    return {rval};
+  }
+
+  void setRemoteValue() {
+    auto lk = testServer.getLock();
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      (testServer.getHolding().*(derived->pReg))[i] += derived->delta + i;
+    }
+  }
+
+  void setForceRuntimeError(bool enable, size_t) { testServer.setException(enable); }
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg1 : RegisterDefaults<HoldingReg1, int16_t> {
+  typedef int16_t minimumUserType;
+
+  std::string path() { return "/holding/reg1"; }
+  minimumUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg1;
+
+  bool isWriteable() { return true; }
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  minimumUserType delta = 42;
+};
+
+/**********************************************************************************************************************/
+
+BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
+  auto ubt = ChimeraTK::UnifiedBackendTest<>().addRegister<HoldingReg1>();
+  ubt.runTests("(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
+}
+#if 0
 /**********************************************************************************************************************/
 
 BOOST_AUTO_TEST_CASE(testReading) {
@@ -198,5 +289,5 @@ BOOST_AUTO_TEST_CASE(testReading) {
   dev.close();
   BOOST_CHECK(!dev.isOpened());
 }
-
+#endif
 /**********************************************************************************************************************/
