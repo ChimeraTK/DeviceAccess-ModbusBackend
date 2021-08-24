@@ -64,8 +64,11 @@ namespace ChimeraTK {
     std::string _address;
     std::map<std::string, std::string> _parameters;
     ModbusType _type;
-    std::atomic<bool> _hasException = {false};
-    bool _mergingEnabled = true;
+    bool _mergingEnabled{true};
+
+    // Address of last exception - used to check whether the exception has been recovered in open()
+    std::pair<uint64_t, uint64_t> _lastFailedAddress;
+    bool _lastFailedAddressValid{false};
   };
 } // namespace ChimeraTK
 

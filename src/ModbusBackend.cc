@@ -45,6 +45,11 @@ namespace ChimeraTK {
 
   void ModbusBackend::open() {
     if(_opened) {
+      _hasActiveException = false;
+      if(_lastFailedAddressValid) {
+        int32_t temp;
+        read(_lastFailedAddress.first, _lastFailedAddress.second, &temp, 2);
+      }
       return;
     }
     if(_type == tcp) {
@@ -79,7 +84,7 @@ namespace ChimeraTK {
       _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
     }
     _opened = true;
-    _hasException = false;
+    _hasActiveException = false;
   }
 
   /********************************************************************************************************************/
@@ -132,7 +137,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
-    if(_hasException) {
+    if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
@@ -157,22 +162,24 @@ namespace ChimeraTK {
 
     if(rc == -1) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
-
-    return;
   }
 
   /********************************************************************************************************************/
 
   void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
-    if(_hasException) {
+    if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
@@ -194,14 +201,17 @@ namespace ChimeraTK {
     }
     if(rc == -1) {
       std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length) {
-      _hasException = true;
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
-    return;
   }
 
   /********************************************************************************************************************/
@@ -213,10 +223,12 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   bool ModbusBackend::isFunctional() const {
-    if(_opened && !_hasException)
+    if(_opened && !_hasActiveException) {
       return true;
-    else
+    }
+    else {
       return false;
+    }
   }
 
   /********************************************************************************************************************/
