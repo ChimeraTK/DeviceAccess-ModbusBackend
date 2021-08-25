@@ -52,17 +52,15 @@ struct ModbusTestServer {
 
   int serverPort() { return _serverPort; }
 
-  struct map_holding {
+  struct __attribute__((packed)) map_holding {
     int16_t reg1[1];
-    int16_t reg2[1];
-    uint16_t reg3[1];
-    int16_t reg4_raw[1];
+    uint16_t reg2[1];
+    int16_t reg3_raw[1];
     int32_t reg32[1];
     float reg754[1];
   };
-  struct map_input {
+  struct __attribute__((packed)) map_input {
     int16_t reg1[1];
-    int16_t reg2[1];
   };
 
   std::unique_lock<std::mutex> getLock() { return std::unique_lock<std::mutex>(_mx_mapping); }
@@ -179,7 +177,7 @@ template<typename Derived, typename RAW_USER_TYPE>
 struct RegisterDefaults {
   Derived* derived{static_cast<Derived*>(this)};
 
-  typedef RAW_USER_TYPE rawUserType;
+  using rawUserType = RAW_USER_TYPE;
 
   bool isReadable() { return true; }
   ChimeraTK::AccessModeFlags supportedFlags() { return {ChimeraTK::AccessMode::raw}; }
@@ -196,13 +194,15 @@ struct RegisterDefaults {
 
   template<typename UserType>
   UserType rawToCooked(rawUserType rv) {
-    return ChimeraTK::numericToUserType<UserType>(rv / derived->rawPerCooked);
+    auto r = ChimeraTK::numericToUserType<UserType>(rv / derived->rawPerCooked);
+    std::cout << "rawToCooked " << rv << " -> " << r << std::endl;
+    return r;
   }
 
   template<typename UserType>
   std::vector<std::vector<UserType>> generateValue() {
     auto lk = testServer.getLock();
-    auto val = testServer.getHolding().*(derived->pReg);
+    auto* val = derived->getMapping().*(derived->pReg);
     std::vector<UserType> rval(derived->nElementsPerChannel());
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
       rval[i] = rawToCooked<UserType>(val[i] + derived->delta + i);
@@ -213,7 +213,7 @@ struct RegisterDefaults {
   template<typename UserType>
   std::vector<std::vector<UserType>> getRemoteValue() {
     auto lk = testServer.getLock();
-    auto* val = testServer.getHolding().*(derived->pReg);
+    auto* val = derived->getMapping().*(derived->pReg);
     std::vector<UserType> rval(derived->nElementsPerChannel());
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
       rval[i] = rawToCooked<UserType>(val[i]);
@@ -224,7 +224,7 @@ struct RegisterDefaults {
   void setRemoteValue() {
     auto lk = testServer.getLock();
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
-      (testServer.getHolding().*(derived->pReg))[i] += derived->delta + i;
+      (derived->getMapping().*(derived->pReg))[i] += derived->delta + i;
     }
   }
 
@@ -233,61 +233,119 @@ struct RegisterDefaults {
 
 /**********************************************************************************************************************/
 
-struct HoldingReg1 : RegisterDefaults<HoldingReg1, int16_t> {
-  typedef int16_t minimumUserType;
+template<typename Derived, typename RAW_USER_TYPE>
+struct HoldingDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
+  bool isWriteable() { return true; }
+  ModbusTestServer::map_holding& getMapping() { return testServer.getHolding(); }
+};
+
+/**********************************************************************************************************************/
+
+template<typename Derived, typename RAW_USER_TYPE>
+struct InputDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
+  bool isWriteable() { return false; }
+  ModbusTestServer::map_input& getMapping() { return testServer.getInput(); }
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg1 : HoldingDefaults<HoldingReg1, int16_t> {
+  using minimumUserType = int16_t;
 
   std::string path() { return "/holding/reg1"; }
-  minimumUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg1;
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg1;
+
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 42;
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg2 : HoldingDefaults<HoldingReg2, uint16_t> {
+  using minimumUserType = uint16_t;
+
+  std::string path() { return "/holding/reg2"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg2;
 
   bool isWriteable() { return true; }
   size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
-  minimumUserType delta = 42;
+  rawUserType delta = 120;
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg3 : HoldingDefaults<HoldingReg3, int16_t> {
+  using minimumUserType = float;
+
+  std::string path() { return "/holding/reg3"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg3_raw;
+
+  bool isWriteable() { return true; }
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 256.;
+  rawUserType delta = 66;
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg32 : HoldingDefaults<HoldingReg32, int32_t> {
+  using minimumUserType = int32_t;
+
+  std::string path() { return "/holding/reg32"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg32;
+
+  bool isWriteable() { return true; }
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 128000;
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingReg754 : HoldingDefaults<HoldingReg754, float> {
+  using minimumUserType = float;
+
+  std::string path() { return "/holding/reg754"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg754;
+
+  bool isWriteable() { return true; }
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 3.141592654;
+};
+
+/**********************************************************************************************************************/
+
+struct InputReg1 : InputDefaults<InputReg1, int16_t> {
+  using minimumUserType = int16_t;
+
+  std::string path() { return "/input/reg1"; }
+  rawUserType (ModbusTestServer::map_input::*pReg)[1] = &ModbusTestServer::map_input::reg1;
+
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 666;
 };
 
 /**********************************************************************************************************************/
 
 BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
-  auto ubt = ChimeraTK::UnifiedBackendTest<>().addRegister<HoldingReg1>();
+  auto ubt = ChimeraTK::UnifiedBackendTest<>()
+                 .addRegister<HoldingReg1>()
+                 .addRegister<HoldingReg2>()
+                 .addRegister<HoldingReg3>()
+                 .addRegister<HoldingReg32>()
+                 .addRegister<HoldingReg754>()
+                 .addRegister<InputReg1>();
   ubt.runTests("(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
 }
-#if 0
-/**********************************************************************************************************************/
 
-BOOST_AUTO_TEST_CASE(testReading) {
-  ChimeraTK::Device dev(
-      "(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
-  dev.open();
-  BOOST_CHECK(dev.isOpened());
-
-  ModbusTestServer::map_holding holding;
-  ModbusTestServer::map_input input;
-
-  input.reg1 = 42;
-  input.reg2 = 120;
-  holding.reg1 = 1;
-  holding.reg2 = 2;
-  holding.reg3 = 3;
-  holding.reg4_raw = std::round(2.71828 * 255.);
-  holding.reg32 = 32323232;
-  holding.reg754 = 3.14159265;
-
-  testServer.setInput(input);
-  testServer.setHolding(holding);
-
-  // Read single element register
-  BOOST_CHECK_EQUAL(dev.read<int>("holding.reg1"), 1);
-  BOOST_CHECK_EQUAL(dev.read<int>("holding.reg2"), 2);
-  BOOST_CHECK_EQUAL(dev.read<int>("holding.reg3"), 3);
-  BOOST_CHECK_CLOSE(dev.read<float>("holding.reg4"), 2.71828, 0.5);
-  BOOST_CHECK_EQUAL(dev.read<int>("holding.reg32"), 32323232);
-  BOOST_CHECK_CLOSE(dev.read<float>("holding.reg754"), 3.14159265, 0.001);
-  BOOST_CHECK_EQUAL(dev.read<int>("input.reg1"), 42);
-  BOOST_CHECK_EQUAL(dev.read<int>("input.reg2"), 120);
-
-  dev.close();
-  BOOST_CHECK(!dev.isOpened());
-}
-#endif
 /**********************************************************************************************************************/
