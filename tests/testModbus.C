@@ -58,6 +58,9 @@ struct ModbusTestServer {
     int16_t reg3_raw[1];
     int32_t reg32[1];
     float reg754[1];
+    int8_t padding{0};
+    int8_t reg8[1];
+    int16_t array[10];
   };
   struct __attribute__((packed)) map_input {
     int16_t reg1[1];
@@ -323,6 +326,35 @@ struct HoldingReg754 : HoldingDefaults<HoldingReg754, float> {
 
 /**********************************************************************************************************************/
 
+struct HoldingReg8 : HoldingDefaults<HoldingReg8, int8_t> {
+  using minimumUserType = int8_t;
+
+  std::string path() { return "/holding/reg8"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg8;
+
+  bool isWriteable() { return true; }
+  size_t nElementsPerChannel() { return 1; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 42;
+};
+
+/**********************************************************************************************************************/
+
+struct HoldingArray : HoldingDefaults<HoldingArray, int16_t> {
+  using minimumUserType = int16_t;
+
+  std::string path() { return "/holding/array"; }
+  rawUserType (ModbusTestServer::map_holding::*pReg)[10] = &ModbusTestServer::map_holding::array;
+
+  size_t nElementsPerChannel() { return 10; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 7;
+};
+
+/**********************************************************************************************************************/
+
 struct InputReg1 : InputDefaults<InputReg1, int16_t> {
   using minimumUserType = int16_t;
 
@@ -344,6 +376,8 @@ BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
                  .addRegister<HoldingReg3>()
                  .addRegister<HoldingReg32>()
                  .addRegister<HoldingReg754>()
+                 .addRegister<HoldingReg8>()
+                 .addRegister<HoldingArray>()
                  .addRegister<InputReg1>();
   ubt.runTests("(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
 }
