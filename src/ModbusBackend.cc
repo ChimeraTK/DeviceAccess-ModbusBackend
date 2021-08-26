@@ -47,10 +47,10 @@ namespace ChimeraTK {
     if(_opened) {
       _hasActiveException = false;
       // verify connection is ok again with a dummy read of the address which failed last.
-      if(_lastFailedAddressValid) {
+      if(_lastFailedAddress.has_value()) {
         int32_t temp;
-        size_t dummyReadSize = _lastFailedAddress.first <= 1 ? 1 : 2; // depends on bar
-        read(_lastFailedAddress.first, _lastFailedAddress.second, &temp, dummyReadSize);
+        size_t dummyReadSize = _lastFailedAddress->first <= 1 ? 1 : 2; // depends on bar
+        read(_lastFailedAddress->first, _lastFailedAddress->second, &temp, dummyReadSize);
       }
       return;
     }
@@ -96,6 +96,17 @@ namespace ChimeraTK {
       _opened = false;
       modbus_close(_ctx);
       modbus_free(_ctx);
+    }
+  }
+
+  /********************************************************************************************************************/
+
+  size_t ModbusBackend::minimumTransferAlignment(uint64_t bar) const {
+    if(bar == 3 || bar == 4) {
+      return 2;
+    }
+    else {
+      return 1;
     }
   }
 
@@ -177,14 +188,12 @@ namespace ChimeraTK {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length) {
       std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
     }
   }
@@ -232,13 +241,11 @@ namespace ChimeraTK {
       std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error(modbus_strerror(errno));
     }
     if(rc != (int)length) {
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      _lastFailedAddressValid = true;
       throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
     }
   }

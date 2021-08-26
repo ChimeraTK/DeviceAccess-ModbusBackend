@@ -37,18 +37,7 @@ namespace ChimeraTK {
     void open() override;
     void closeImpl() override;
     bool canMergeRequests() const override { return _mergingEnabled; }
-
-    size_t minimumTransferAlignment(uint64_t bar) const override {
-      if(bar == 3 || bar == 4) {
-        std::cout << "Align 2\n";
-        return 2;
-      }
-      else {
-        std::cout << "Align 1\n";
-        return 1;
-      }
-    }
-
+    size_t minimumTransferAlignment(uint64_t bar) const override;
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
     bool barIndexValid(uint64_t bar) override;
@@ -76,8 +65,7 @@ namespace ChimeraTK {
     bool _mergingEnabled{true};
 
     // Address of last exception - used to check whether the exception has been recovered in open()
-    std::pair<uint64_t, uint64_t> _lastFailedAddress;
-    bool _lastFailedAddressValid{false};
+    std::optional<std::pair<uint64_t, uint64_t>> _lastFailedAddress;
   };
 } // namespace ChimeraTK
 
