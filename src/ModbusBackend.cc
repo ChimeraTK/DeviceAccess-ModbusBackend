@@ -45,18 +45,15 @@ namespace ChimeraTK {
 
   void ModbusBackend::open() {
     if(_opened) {
+      _hasActiveException = false;
+      // verify connection is ok again with a dummy read of the address which failed last.
+      if(_lastFailedAddress.has_value()) {
+        int32_t temp;
+        size_t dummyReadSize = _lastFailedAddress->first <= 1 ? 1 : 2; // depends on bar
+        read(_lastFailedAddress->first, _lastFailedAddress->second, &temp, dummyReadSize);
+      }
       return;
     }
-    if(_type == tcp) {
-      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << ":" << _parameters["port"] << std::endl;
-    }
-    else {
-      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << " slave id:" << _parameters["slaveid"]
-                << "\n\t baud rate: " << _parameters["baud"]
-                << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["databits"]
-                << "\n\t stop bits: " << _parameters["stopbits"] << std::endl;
-    }
-#ifndef DUMMY
     if(_type == tcp) {
       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
     }
@@ -74,30 +71,34 @@ namespace ChimeraTK {
     if(modbus_connect(_ctx) == -1) {
       throw ChimeraTK::runtime_error(std::string("modbus::Backend: Connection failed: ") + modbus_strerror(errno));
     }
-#else
-    std::cout << "modbus::Backend: Running in test mode" << std::endl;
-    std::cout << "modbus::Backend: Map file is: " << _parameters["map"] << std::endl;
-    std::cout << "modbus::Backend: Type is: " << _type << std::endl;
 
-#endif
     auto disable_merging_str = _parameters.find("disableMerging");
     if(disable_merging_str != _parameters.end()) {
       _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
     }
     _opened = true;
-    _hasException = false;
+    _hasActiveException = false;
   }
 
   /********************************************************************************************************************/
 
   void ModbusBackend::closeImpl() {
-#ifndef DUMMY
     if(_opened) {
+      _opened = false;
       modbus_close(_ctx);
       modbus_free(_ctx);
     }
-#endif
-    _opened = false;
+  }
+
+  /********************************************************************************************************************/
+
+  size_t ModbusBackend::minimumTransferAlignment(uint64_t bar) const {
+    if(bar == 3 || bar == 4) {
+      return 2;
+    }
+    else {
+      return 1;
+    }
   }
 
   /********************************************************************************************************************/
@@ -140,19 +141,28 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
-    if(_hasException) {
+    if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    if(addressInBytes % 2 != 0) {
-      throw ChimeraTK::runtime_error("Address must be multiple of 2.");
+    size_t address = addressInBytes;
+    size_t length = sizeInBytes;
+    if(bar == 3 || bar == 4) {
+      assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
+      assert(length % 2 == 0);
+      address /= 2;
+      length /= 2;
     }
-    size_t address = addressInBytes / 2;
-    size_t length = sizeInBytes / 2;
     if(length == 0) length = 1;
 
     int rc;
-    if(bar == 3) {
+    if(bar == 0) {
+      rc = modbus_read_bits(_ctx, address, length, (uint8_t*)data);
+    }
+    else if(bar == 1) {
+      rc = modbus_read_input_bits(_ctx, address, length, (uint8_t*)data);
+    }
+    else if(bar == 3) {
       rc = modbus_read_registers(_ctx, address, length, (uint16_t*)data);
     }
     else if(bar == 4) {
@@ -163,32 +173,48 @@ namespace ChimeraTK {
           "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
 
-    if(rc == -1) {
-      std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
-      throw ChimeraTK::runtime_error(modbus_strerror(errno));
-    }
     if(rc != (int)length) {
-      std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
-      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      std::string modbusError;
+      if(rc == -1) {
+        modbusError = modbus_strerror(errno);
+      }
+      else {
+        modbusError = "Not all registers were transferred.";
+      }
+      throw ChimeraTK::runtime_error("ModbusBackend failed reading address (" + std::to_string(bar) + "," +
+          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
     }
-
-    return;
   }
 
   /********************************************************************************************************************/
 
   void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
-    if(_hasException) {
+    if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t address = addressInBytes / 2;
-    size_t length = sizeInBytes / 2;
+    size_t address = addressInBytes;
+    size_t length = sizeInBytes;
+    if(bar == 3) {
+      assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
+      assert(length % 2 == 0);
+      address /= 2;
+      length /= 2;
+    }
+    if(length == 0) length = 1;
 
     int rc;
-    if(bar == 3) {
+    if(bar == 0) {
+      if(length == 1) {
+        rc = modbus_write_bit(_ctx, address, *((uint8_t*)data));
+      }
+      else {
+        rc = modbus_write_bits(_ctx, address, length, (uint8_t*)data);
+      }
+    }
+    else if(bar == 3) {
       if(length == 1) {
         rc = modbus_write_register(_ctx, address, *((uint16_t*)data));
       }
@@ -200,32 +226,28 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error(
           "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
-    if(rc == -1) {
-      std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
-      _hasException = true;
-      throw ChimeraTK::runtime_error(modbus_strerror(errno));
-    }
     if(rc != (int)length) {
-      _hasException = true;
-      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
+      _hasActiveException = true;
+      _lastFailedAddress = {bar, addressInBytes};
+      std::string modbusError;
+      if(rc == -1) {
+        modbusError = modbus_strerror(errno);
+      }
+      else {
+        modbusError = "Not all registers were transferred.";
+      }
+      throw ChimeraTK::runtime_error("ModbusBackend failed writing address (" + std::to_string(bar) + "," +
+          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
     }
-    return;
   }
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::barIndexValid(uint64_t bar) {
-    return (bar == 3) || (bar == 4);
-  }
+  bool ModbusBackend::barIndexValid(uint64_t bar) { return (bar == 0) || (bar == 1) || (bar == 3) || (bar == 4); }
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::isFunctional() const {
-    if(_opened && !_hasException)
-      return true;
-    else
-      return false;
-  }
+  bool ModbusBackend::isFunctional() const { return _opened && !_hasActiveException; }
 
   /********************************************************************************************************************/
 

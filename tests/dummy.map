@@ -1,3 +1,14 @@
-#Name       #N_ELEMS    #ADDR  #N_BYTES  #BAR  #WIDTH  #N_FRAC  SIGNED  #ACCESS
-data.float  2           0      4         3     32      0        0       RO
-data.uint16 1           4      2         3     32      0        0       RO
+#Name             #N_ELEMS    #ADDR  #N_BYTES  #BAR  #WIDTH  #N_FRAC  SIGNED  #ACCESS
+holding.reg1      1           0      2         3     16      0        1       RW
+holding.reg2      1           2      2         3     16      0        0       RW
+holding.reg3      1           4      2         3     16      8        1       RW
+holding.reg32     1           6      4         3     32      0        1       RW
+holding.reg754    1           10     4         3     32      IEEE754  1       RW
+holding.reg8      1           15     1         3     8       0        1       RW
+holding.array     10          16     20        3     16      0        1       RW
+input.reg1        1           1024   2         4     16      0        1       RO
+coil.bit1         1           0      1         0     1       0        0       RW
+coil.bit2         1           1      1         0     1       0        0       RW
+coil.array        8           2      8         0     1       0        0       RW
+discreteinp.array 10          0      10        1     1       0        0       RO
+discreteinp.bit1  1           10     1         1     1       0        0       RO

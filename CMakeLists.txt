@@ -2,7 +2,6 @@ project(ChimeraTK-DeviceAccess-ModbusBackend)
 cmake_minimum_required(VERSION 2.8)
 
 option(BUILD_TESTS "Build tests." ON)
-option(DUMMY "Use dummy values and do not connect to real Modbus server" OFF)
 
 set(${PROJECT_NAME}_MAJOR_VERSION 01)
 set(${PROJECT_NAME}_MINOR_VERSION 03)
@@ -48,25 +47,19 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src library_sources)
 
 add_library(${PROJECT_NAME} SHARED ${library_sources} )
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_FULL_LIBRARY_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
-if(DUMMY)
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
-else()
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
-endif(DUMMY)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_FLAGS "-Wl,--enable-new-dtags")
 target_link_libraries(${PROJECT_NAME} ${ChimeraTK-DeviceAccess_LIBRARIES} ${MODBUS} )
 
 # Create the executables for automated unit testing.
-# Disabled until issue #7 is fixed. 
-#if(TESTING_IS_ENABLED)
-#  add_executable(testModbus ${library_sources} tests/testModbus.C)
-#  target_link_libraries(testModbus ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES} ${MODBUS})
-#  set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS} -DDUMMY")
-#  add_test(testModbus testModbus)
+if(TESTING_IS_ENABLED)
+  add_executable(testModbus ${library_sources} tests/testModbus.C)
+  target_link_libraries(testModbus ${ChimeraTK-DeviceAccess_LIBRARIES} ${Boost_LIBRARIES} ${MODBUS})
+  set_target_properties(testModbus PROPERTIES COMPILE_FLAGS "${ChimeraTK-DeviceAccess_CXX_FLAGS}")
+  add_test(testModbus testModbus)
   
-#  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/dummy.map DESTINATION ${PROJECT_BINARY_DIR})
-#  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
-#endif(TESTING_IS_ENABLED)
+  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/dummy.map DESTINATION ${PROJECT_BINARY_DIR})
+  FILE( COPY ${CMAKE_SOURCE_DIR}/tests/devMapFile.dmap DESTINATION ${PROJECT_BINARY_DIR})
+endif(TESTING_IS_ENABLED)
 
 #Install the library and the executables
 install(TARGETS ${PROJECT_NAME}

@@ -37,9 +37,7 @@ namespace ChimeraTK {
     void open() override;
     void closeImpl() override;
     bool canMergeRequests() const override { return _mergingEnabled; }
-    // Modbus registers are always 16 bit wide
-    size_t minimumTransferAlignment() const override { return 2; }
-
+    size_t minimumTransferAlignment(uint64_t bar) const override;
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
     void write(uint64_t bar, uint64_t address, int32_t const* data, size_t sizeInBytes) override;
     bool barIndexValid(uint64_t bar) override;
@@ -64,8 +62,10 @@ namespace ChimeraTK {
     std::string _address;
     std::map<std::string, std::string> _parameters;
     ModbusType _type;
-    std::atomic<bool> _hasException = {false};
-    bool _mergingEnabled = true;
+    bool _mergingEnabled{true};
+
+    // Address of last exception - used to check whether the exception has been recovered in open()
+    std::optional<std::pair<uint64_t, uint64_t>> _lastFailedAddress;
   };
 } // namespace ChimeraTK
 
