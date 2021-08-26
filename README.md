@@ -1,21 +1,45 @@
 # Modbus backend
 
-The modbus backend is based on the NumericAddressedBackend. This means registers are accessed via an address. Currently the NumericAdressedBacked uses uint32\_t words, but modbus is using uint16\_t words. In consequence, when reading a modbus word (16 bit) the result is a 32 bit word, where only the first 16 bits are used.
+The modbus backend is based on the NumericAddressedBackend. This means registers are accessed via an address consisting of two parts ("bar" and "address"). Register addresses are specified in a map file (just like for any other NumericAddressedBackend including e.g. the PCIe backend), which looks typically like this:
 
-The mapping is done using the same parser as ChimeraTK's pcie backend. Since Modbus registers are 16 bits (2 bytes) wide, the address is the modbus register index times 2. A typical address in the mapping file looks like:
+    #Name             #N_ELEMS    #ADDR  #N_BYTES  #BAR  #WIDTH  #N_FRAC  SIGNED  #ACCESS
+    holding.reg1      1           0      2         3     16      0        1       RW
+    holding.reg2      1           2      2         3     16      0        0       RW
+    holding.reg3      1           4      2         3     16      8        1       RW
+    holding.reg32     1           6      4         3     32      0        1       RW
+    holding.float     1           10     4         3     32      IEEE754  1       RW
+    holding.reg8      1           15     1         3     8       0        1       RW
+    holding.array     10          16     20        3     16      0        1       RW
+    input.reg1        1           1024   2         4     16      0        1       RO
+    coil.bit1         1           0      1         0     1       0        0       RW
+    coil.bit2         1           1      1         0     1       0        0       RW
+    coil.array        8           2      8         0     1       0        0       RW
+    discreteinp.array 10          0      10        1     1       0        0       RO
+    discreteinp.bit1  1           10     1         1     1       0        0       RO
 
-    device.current  2  18  4  3  32  0  0  RO
-    
-Here 2 elements are read starting from address 18 (register 9). The total resulting length is 4 byte (2 times 16 bits). 
-The width (32) needs to be 32 in any case. It defines the size of the single elements used by the backend, which is 32 because `int32_t` is used. The bar information (3) is used either read holding registers (`bar=3`) or to read input registers (`bar=4`). The holding registers and input registers have different historical meaning, but nowadays it’s more common to use holding registers only. The number of fractional bits (0) and signed/unsigned flag (0) is not used in the backend, but it is used e.g. by Qthardmon to interprete the data read from the device. Since in most cases it will be intepreted wrong anyway (see remark below) it does not matter what is set. Finally, the access right (RO) is set. For more details see the [MapFileParser.cpp](https://github.com/ChimeraTK/DeviceAccess/blob/master/fileparsers/src/MapFileParser.cpp).
+For more details about the map file format, please refer to the [DeviceAccess documentation](https://chimeratk.github.io/DeviceAccess/).
+
+The #BAR column represents the Modbus object type:
+- 0: Coil / writeable bit
+- 1: Discrete input / read-only bit
+- 3: Holding register / writeable register
+- 4: Input register / read-only register
+
+This number is used as a leading digit of the address in most other Modbus applications, see [Wikipedia](https://en.wikipedia.org/wiki/Modbus#Coil,_discrete_input,_input_register,_holding_register_numbers_and_addresses).
+
+The #ADDR column contains a byte address of the register counting from 0. Compared to the standard Modbus register number (16 bit registers and counting from 1) the difference is a factor of 2 and an offset of 1. Hence, in the above example `holding.reg1` would be address `30001`, while `holding.reg2` corresponds to `30002` etc. For bits (bars 0 and 1), the address from the map file matches the Modbus register number apart from the offest of 1.
+
+Since Modbus supports transferring mulitple registers with a single command, registers with a bigger width than 16 bits are possible (cf. `holding.reg32` in the above example). In case the given byte address is not aligned with the Modbus 16 bit register width (cf. `holding.reg8`), a less-efficient unaligned transfer needs to be done, which involves read-modify-write in case of write operations.
 
 Reads/writes of consecutive registers can be merged into single multi-register accesses. To disable this (e.g. for broken Modbus servers), the parameter `disableMerging` can be set.
 
-The device mapping file syntax is as follows:
+The fixed-point resp. floating-point conversions specified in the map file are executed just like for any other NumericAddressedBackend. If no conversion is required for a standard 16-bit Modbus register, specify the "#WIDTH  #N_FRAC  SIGNED" columns as "16 0 1" for signed resp. "16 0 0" for unsigned registers. The specified bit width must not exceed the bit width of the register, i.e. if #N_BYTES is e.g. 2, #WIDTH must be <= 16.
 
-    test1 (modbus:168.1.1.1?type=tcp&map=device.map&port=502)
-    test2 (modbus:myserver?type=tcp&map=device.map&port=502&slaveid=2)
-    test3 (modbus:/dev/ttyUSB0?type=rtu&map=device.map&parity=N&baud=115200&data_bits=8&stop_bits=1)
+The CDD (ChimeraTK device descriptor) syntax (as used e.g. in the DMAP file) is as follows:
+
+* TCP mode: `(modbus:myserver?type=tcp&map=device.map&port=502)`
+* RTU over TCP mode: `(modbus:myserver?type=tcp&map=device.map&port=502&slaveid=2)`
+* RTU mode: `(modbus:/dev/ttyUSB0?type=rtu&map=device.map&parity=N&baud=115200&data_bits=8&stop_bits=1)`
 
 As can be seen in the example above two types of modbus communication are supported:
  - type: rtu
@@ -34,40 +58,3 @@ Both offer different additional parameters. If no parameters are given the follo
     port = 502
     slaveid = 255
     disableMerging = 0
-
-SDM URI is only supported using default settings as listed above:
-    
-    test1 sdm://./modbus=168.1.1.1:tcp  device.map
-    
-## Connection status
-
-In case of a read/write error the connection is closed. This will trigger an automatic reopening of the connection. In detail, an exception is thrown and `opened` is set `false`.
-This results in `isFunctional()` returning `false`, which will cause the application to call `open()` and the new connection is set.
-
-## Remark 
-
-Since e.g. information of a float (2 times 16 bit, thus 2 modbus registers) is put into 2 32 bit words it can not be decoded by e.g. Qthardmon. 
-When reading such a register one has to use a `ChimeraTK::OneDRegisterAccessor<int>` or in case of an application a `ArrayPollInput<int>` of length 2 (the two 32 bit words).
-Currently the decoding has to be done in the application. This can be done as follows:
-
-    union UFloat{
-      uint16_t data16[2];
-      int32_t  idata;
-      float  fdata;
-    };
-    
-    uint32_t modbusDataEncoded[2];
-    
-    UFloat tmp[2];
-    UFloat modbusDataDecoded;
-    
-    tmp.data32[0] = modbusDataEncoded[0];
-    tmp.data32[1] = modbusDataEncoded[1];
-    modbusDataDecoded.data16[0] = tmp[0].data16[0];
-    modbusDataDecoded.data16[1] = tmp[1].data16[0];
-    
-    std::cout << "Resulting float is: " << modbusDataDecoded.fdata << std::endl;
-    
-See also the unit test, which illustrates the decoding and reading from a modbus device.
-    
-**The decoding should be done in the backend itself in the future.**
