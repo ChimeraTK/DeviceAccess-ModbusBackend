@@ -137,6 +137,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
+    std::cout << "read(" << bar << ", " << addressInBytes << ", " << sizeInBytes << ")" << std::endl;
     if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
@@ -149,7 +150,13 @@ namespace ChimeraTK {
     if(length == 0) length = 1;
 
     int rc;
-    if(bar == 3) {
+    if(bar == 0) {
+      rc = modbus_read_bits(_ctx, address, length, (uint8_t*)data);
+    }
+    else if(bar == 1) {
+      rc = modbus_read_input_bits(_ctx, address, length, (uint8_t*)data);
+    }
+    else if(bar == 3) {
       rc = modbus_read_registers(_ctx, address, length, (uint16_t*)data);
     }
     else if(bar == 4) {
@@ -187,7 +194,15 @@ namespace ChimeraTK {
     size_t length = sizeInBytes / 2;
 
     int rc;
-    if(bar == 3) {
+    if(bar == 0) {
+      if(length == 1) {
+        rc = modbus_write_bit(_ctx, address, *((uint8_t*)data));
+      }
+      else {
+        rc = modbus_write_bits(_ctx, address, length, (uint8_t*)data);
+      }
+    }
+    else if(bar == 3) {
       if(length == 1) {
         rc = modbus_write_register(_ctx, address, *((uint16_t*)data));
       }
@@ -216,9 +231,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::barIndexValid(uint64_t bar) {
-    return (bar == 3) || (bar == 4);
-  }
+  bool ModbusBackend::barIndexValid(uint64_t bar) { return (bar == 0) || (bar == 1) || (bar == 3) || (bar == 4); }
 
   /********************************************************************************************************************/
 

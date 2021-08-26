@@ -10,5 +10,5 @@ input.reg1        1        1024      2         4     16      0        1       RO
 coil.bit1         1           0      1         0      1      0        0       RW
 coil.bit2         1           1      1         0      1      0        0       RW
 coil.array        8           2      8         0      1      0        0       RW
-discreteinp.bit1  1           0      1         1      1      0        0       RO
-discreteinp.array 1           1      8         1      1      0        0       RO
+discreteinp.array 1           0      8         1      1      0        0       RO
+discreteinp.bit1  1           8      1         1      1      0        0       RO

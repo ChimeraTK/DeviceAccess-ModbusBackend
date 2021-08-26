@@ -7,6 +7,10 @@
 
 #define BOOST_TEST_MODULE ModbusTest
 
+#define BOOST_NO_EXCEPTIONS
+#include <boost/test/included/unit_test.hpp>
+#undef BOOST_NO_EXCEPTIONS
+
 #include "ModbusBackend.h"
 
 #include <ChimeraTK/Device.h>
@@ -14,10 +18,6 @@
 
 #include <netinet/ip.h>
 #include <arpa/inet.h>
-
-//#define BOOST_NO_EXCEPTIONS
-#include <boost/test/included/unit_test.hpp>
-//#undef BOOST_NO_EXCEPTIONS
 using namespace boost::unit_test_framework;
 
 using namespace ChimeraTK;
@@ -27,16 +27,16 @@ using namespace ChimeraTK;
 struct ModbusTestServer {
   ModbusTestServer() {
     // create mapping
-    _mapping.nb_bits = 0;
-    _mapping.nb_input_bits = 0;
+    _mapping.nb_bits = sizeof(_map_coil);
+    _mapping.nb_input_bits = sizeof(_map_discreteinput);
     _mapping.nb_registers = sizeof(_map_holding) / 2;
     _mapping.nb_input_registers = sizeof(_map_input) / 2;
     _mapping.start_bits = 0;
     _mapping.start_input_bits = 0;
     _mapping.start_registers = 0;
     _mapping.start_input_registers = 1024 / 2; // map file address is in bytes, this on is in (16 bit) words
-    _mapping.tab_bits = nullptr;
-    _mapping.tab_input_bits = nullptr;
+    _mapping.tab_bits = static_cast<uint8_t*>(static_cast<void*>(&_map_coil));
+    _mapping.tab_input_bits = static_cast<uint8_t*>(static_cast<void*>(&_map_discreteinput));
     _mapping.tab_registers = static_cast<uint16_t*>(static_cast<void*>(&_map_holding));
     _mapping.tab_input_registers = static_cast<uint16_t*>(static_cast<void*>(&_map_input));
 
@@ -50,7 +50,7 @@ struct ModbusTestServer {
     _serverThread.join();
   }
 
-  int serverPort() { return _serverPort; }
+  int serverPort() const { return _serverPort; }
 
   struct __attribute__((packed)) map_holding {
     int16_t reg1[1];
@@ -65,10 +65,21 @@ struct ModbusTestServer {
   struct __attribute__((packed)) map_input {
     int16_t reg1[1];
   };
+  struct __attribute__((packed)) map_coil {
+    int8_t bit1[1];
+    int8_t bit2[1];
+    int8_t array[8];
+  };
+  struct __attribute__((packed)) map_discreteinput {
+    int8_t array[8];
+    int8_t bit1[1];
+  };
 
   std::unique_lock<std::mutex> getLock() { return std::unique_lock<std::mutex>(_mx_mapping); }
   map_holding& getHolding() { return _map_holding; }
   map_input& getInput() { return _map_input; }
+  map_coil& getCoil() { return _map_coil; }
+  map_discreteinput& getDiscreteInput() { return _map_discreteinput; }
 
   void setException(bool enable) { _exception = enable; }
 
@@ -166,6 +177,8 @@ struct ModbusTestServer {
 
   map_holding _map_holding;
   map_input _map_input;
+  map_coil _map_coil;
+  map_discreteinput _map_discreteinput;
 
   std::thread _serverThread;
 
@@ -195,10 +208,18 @@ struct RegisterDefaults {
                                            .disableSwitchWriteOnly()
                                            .disableTestWriteNeverLosesData();
 
+  void setForceRuntimeError(bool enable, size_t) { testServer.setException(enable); }
+};
+
+/**********************************************************************************************************************/
+
+template<typename Derived, typename RAW_USER_TYPE>
+struct NumericDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
+  using RegisterDefaults<Derived, RAW_USER_TYPE>::derived;
+
   template<typename UserType>
-  UserType rawToCooked(rawUserType rv) {
+  UserType rawToCooked(RAW_USER_TYPE rv) {
     auto r = ChimeraTK::numericToUserType<UserType>(rv / derived->rawPerCooked);
-    std::cout << "rawToCooked " << rv << " -> " << r << std::endl;
     return r;
   }
 
@@ -230,14 +251,49 @@ struct RegisterDefaults {
       (derived->getMapping().*(derived->pReg))[i] += derived->delta + i;
     }
   }
+};
 
-  void setForceRuntimeError(bool enable, size_t) { testServer.setException(enable); }
+/**********************************************************************************************************************/
+
+template<typename Derived>
+struct BitDefaults : RegisterDefaults<Derived, int8_t> {
+  using RegisterDefaults<Derived, int8_t>::derived;
+  using minimumUserType = ChimeraTK::Boolean;
+
+  template<typename UserType>
+  std::vector<std::vector<UserType>> generateValue() {
+    auto lk = testServer.getLock();
+    auto* val = derived->getMapping().*(derived->pReg);
+    std::vector<UserType> rval(derived->nElementsPerChannel());
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      rval[i] = ChimeraTK::numericToUserType<UserType>(val[i] == 0);
+    }
+    return {rval};
+  }
+
+  template<typename UserType>
+  std::vector<std::vector<UserType>> getRemoteValue() {
+    auto lk = testServer.getLock();
+    auto* val = derived->getMapping().*(derived->pReg);
+    std::vector<UserType> rval(derived->nElementsPerChannel());
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      rval[i] = ChimeraTK::numericToUserType<UserType>(val[i] != 0);
+    }
+    return {rval};
+  }
+
+  void setRemoteValue() {
+    auto lk = testServer.getLock();
+    for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
+      (derived->getMapping().*(derived->pReg))[i] = (derived->getMapping().*(derived->pReg))[i] == 0;
+    }
+  }
 };
 
 /**********************************************************************************************************************/
 
 template<typename Derived, typename RAW_USER_TYPE>
-struct HoldingDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
+struct HoldingDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
   bool isWriteable() { return true; }
   ModbusTestServer::map_holding& getMapping() { return testServer.getHolding(); }
 };
@@ -245,9 +301,25 @@ struct HoldingDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
 /**********************************************************************************************************************/
 
 template<typename Derived, typename RAW_USER_TYPE>
-struct InputDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
+struct InputDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
   bool isWriteable() { return false; }
   ModbusTestServer::map_input& getMapping() { return testServer.getInput(); }
+};
+
+/**********************************************************************************************************************/
+
+template<typename Derived>
+struct CoilDefaults : BitDefaults<Derived> {
+  bool isWriteable() { return true; }
+  ModbusTestServer::map_coil& getMapping() { return testServer.getCoil(); }
+};
+
+/**********************************************************************************************************************/
+
+template<typename Derived>
+struct DiscreteInputDefaults : BitDefaults<Derived> {
+  bool isWriteable() { return false; }
+  ModbusTestServer::map_discreteinput& getMapping() { return testServer.getDiscreteInput(); }
 };
 
 /**********************************************************************************************************************/
@@ -369,6 +441,14 @@ struct InputReg1 : InputDefaults<InputReg1, int16_t> {
 
 /**********************************************************************************************************************/
 
+struct CoilBit1 : CoilDefaults<CoilBit1> {
+  std::string path() { return "/coil/bit1"; }
+  rawUserType (ModbusTestServer::map_coil::*pReg)[1] = &ModbusTestServer::map_coil::bit1;
+
+  size_t nElementsPerChannel() { return 1; }
+};
+/**********************************************************************************************************************/
+
 BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
   auto ubt = ChimeraTK::UnifiedBackendTest<>()
                  .addRegister<HoldingReg1>()
@@ -378,7 +458,8 @@ BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
                  .addRegister<HoldingReg754>()
                  .addRegister<HoldingReg8>()
                  .addRegister<HoldingArray>()
-                 .addRegister<InputReg1>();
+                 .addRegister<InputReg1>()
+                 .addRegister<CoilBit1>();
   ubt.runTests("(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
 }
 
