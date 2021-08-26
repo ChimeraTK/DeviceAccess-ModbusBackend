@@ -31,6 +31,8 @@ struct ModbusTestServer {
     _mapping.nb_input_bits = sizeof(_map_discreteinput);
     _mapping.nb_registers = sizeof(_map_holding) / 2;
     _mapping.nb_input_registers = sizeof(_map_input) / 2;
+    std::cout << _mapping.nb_bits << " " << _mapping.nb_input_bits << " " << _mapping.nb_registers << " "
+              << _mapping.nb_input_registers << "\n";
     _mapping.start_bits = 0;
     _mapping.start_input_bits = 0;
     _mapping.start_registers = 0;
@@ -71,7 +73,7 @@ struct ModbusTestServer {
     int8_t array[8];
   };
   struct __attribute__((packed)) map_discreteinput {
-    int8_t array[8];
+    int8_t array[10];
     int8_t bit1[1];
   };
 
@@ -447,6 +449,43 @@ struct CoilBit1 : CoilDefaults<CoilBit1> {
 
   size_t nElementsPerChannel() { return 1; }
 };
+
+/**********************************************************************************************************************/
+
+struct CoilBit2 : CoilDefaults<CoilBit2> {
+  std::string path() { return "/coil/bit2"; }
+  rawUserType (ModbusTestServer::map_coil::*pReg)[1] = &ModbusTestServer::map_coil::bit2;
+
+  size_t nElementsPerChannel() { return 1; }
+};
+
+/**********************************************************************************************************************/
+
+struct CoilArray : CoilDefaults<CoilArray> {
+  std::string path() { return "/coil/array"; }
+  rawUserType (ModbusTestServer::map_coil::*pReg)[8] = &ModbusTestServer::map_coil::array;
+
+  size_t nElementsPerChannel() { return 8; }
+};
+
+/**********************************************************************************************************************/
+
+struct DiscreteInputArray : DiscreteInputDefaults<DiscreteInputArray> {
+  std::string path() { return "/discreteinp/array"; }
+  rawUserType (ModbusTestServer::map_discreteinput::*pReg)[10] = &ModbusTestServer::map_discreteinput::array;
+
+  size_t nElementsPerChannel() { return 10; }
+};
+
+/**********************************************************************************************************************/
+
+struct DiscreteInputBit1 : DiscreteInputDefaults<DiscreteInputBit1> {
+  std::string path() { return "/discreteinp/bit1"; }
+  rawUserType (ModbusTestServer::map_discreteinput::*pReg)[1] = &ModbusTestServer::map_discreteinput::bit1;
+
+  size_t nElementsPerChannel() { return 1; }
+};
+
 /**********************************************************************************************************************/
 
 BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
@@ -459,7 +498,11 @@ BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
                  .addRegister<HoldingReg8>()
                  .addRegister<HoldingArray>()
                  .addRegister<InputReg1>()
-                 .addRegister<CoilBit1>();
+                 .addRegister<CoilBit1>()
+                 .addRegister<CoilBit2>()
+                 .addRegister<CoilArray>()
+                 .addRegister<DiscreteInputArray>()
+                 .addRegister<DiscreteInputBit1>();
   ubt.runTests("(modbus:localhost?type=tcp&map=dummy.map&port=" + std::to_string(testServer.serverPort()) + ")");
 }
 
