@@ -48,13 +48,13 @@ As can be seen in the example above two types of modbus communication are suppor
 Both offer different additional parameters. If no parameters are given the following defaults are used:
 
 * rtu: 
-    parity = N (other allowed values are E or O)
-    baud = 115200
-    data bits = 8
-    stop bits = 1 (other allowed value is 2)
-    slaveid = 1
-    disableMerging = 0
+    * parity = N (other allowed values are E or O)
+    * baud = 115200
+    * data bits = 8
+    * stop bits = 1 (other allowed value is 2)
+    * slaveid = 1
+    * disableMerging = 0
 * tcp: 
-    port = 502
-    slaveid = 255
-    disableMerging = 0
+    * port = 502
+    * slaveid = 255
+    * disableMerging = 0
