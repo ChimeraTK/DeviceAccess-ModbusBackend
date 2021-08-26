@@ -46,9 +46,11 @@ namespace ChimeraTK {
   void ModbusBackend::open() {
     if(_opened) {
       _hasActiveException = false;
+      // verify connection is ok again with a dummy read of the address which failed last.
       if(_lastFailedAddressValid) {
         int32_t temp;
-        read(_lastFailedAddress.first, _lastFailedAddress.second, &temp, 2);
+        size_t dummyReadSize = _lastFailedAddress.first <= 1 ? 1 : 2; // depends on bar
+        read(_lastFailedAddress.first, _lastFailedAddress.second, &temp, dummyReadSize);
       }
       return;
     }
@@ -141,12 +143,16 @@ namespace ChimeraTK {
     if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
+    assert(bar == 0 || bar == 1 || bar == 3 || bar == 4);
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    if(addressInBytes % 2 != 0) {
-      throw ChimeraTK::runtime_error("Address must be multiple of 2.");
+    size_t address = addressInBytes;
+    size_t length = sizeInBytes;
+    if(bar == 3 || bar == 4) {
+      assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
+      assert(length % 2 == 0);
+      address /= 2;
+      length /= 2;
     }
-    size_t address = addressInBytes / 2;
-    size_t length = sizeInBytes / 2;
     if(length == 0) length = 1;
 
     int rc;
@@ -190,8 +196,16 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t address = addressInBytes / 2;
-    size_t length = sizeInBytes / 2;
+    size_t address = addressInBytes;
+    size_t length = sizeInBytes;
+    assert(bar == 0 || bar == 3);
+    if(bar == 3) {
+      assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
+      assert(length % 2 == 0);
+      address /= 2;
+      length /= 2;
+    }
+    if(length == 0) length = 1;
 
     int rc;
     if(bar == 0) {
