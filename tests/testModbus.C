@@ -92,7 +92,8 @@ struct ModbusTestServer {
     int server_socket = modbus_tcp_listen(ctx, 1);
     if(server_socket == -1) {
       modbus_free(ctx);
-      std::cout << "Unable to listen TCP connection\n";
+      std::cerr << "Test setup error: Unable to listen TCP connection\n";
+      throw std::runtime_error("Test setup error: Unable to listen TCP connection");
     }
 
     // Prepare set of FDs for select() with just the server socket in for now. (Client connections will be added later
@@ -108,7 +109,8 @@ struct ModbusTestServer {
       // Wait for any of the connections / server socket to receive data
       fd_set rdset = refset;
       if(select(fdmax + 1, &rdset, nullptr, nullptr, nullptr) == -1) {
-        std::cout << "Server select() failure.\n";
+        std::cerr << "Server select() failure.\n";
+        throw std::runtime_error("Test error: Server select() failure");
       }
 
       // shutdown thread?
@@ -130,7 +132,8 @@ struct ModbusTestServer {
           memset(&clientaddr, 0, sizeof(clientaddr));
           int newfd = accept(server_socket, (struct sockaddr*)&clientaddr, &addrlen);
           if(newfd == -1) {
-            perror("Server accept() error");
+            std::cerr << "Server accept() failure.\n";
+            throw std::runtime_error("Test error: Server accept() failure");
           }
           else {
             // Add new
@@ -140,8 +143,6 @@ struct ModbusTestServer {
               /* Keep track of the maximum */
               fdmax = newfd;
             }
-            std::cout << "New connection from " << inet_ntoa(clientaddr.sin_addr) << ":" << clientaddr.sin_port
-                      << " on socket " << newfd << "\n";
           }
         }
         // Data received on any other socket: client is requesting read/write
@@ -152,18 +153,14 @@ struct ModbusTestServer {
           int rc = modbus_receive(ctx, query);
           if(rc > 0) {
             if(!_exception) {
-              std::cout << "Incoming request on " << master_socket << " (no exception)\n";
               std::unique_lock<std::mutex> lk(_mx_mapping);
               modbus_reply(ctx, query, rc, &_mapping);
             }
             else {
-              std::cout << "Incoming request on " << master_socket << " (exception reply)\n";
               modbus_reply_exception(ctx, query, MODBUS_EXCEPTION_NOT_DEFINED);
             }
           }
           else if(rc == -1) {
-            std::cout << "Error on socket " << master_socket << "\n";
-            // Currently the connection is closed in case of any error.
             close(master_socket);
             FD_CLR(master_socket, &refset);
           }

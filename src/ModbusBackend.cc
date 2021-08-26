@@ -55,15 +55,6 @@ namespace ChimeraTK {
       return;
     }
     if(_type == tcp) {
-      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << ":" << _parameters["port"] << std::endl;
-    }
-    else {
-      std::cout << "modbus::Backend: Connecting to: " << _address.c_str() << " slave id:" << _parameters["slaveid"]
-                << "\n\t baud rate: " << _parameters["baud"]
-                << "\n\t parity: " << _parameters["parity"] << "\n\t data bits: " << _parameters["databits"]
-                << "\n\t stop bits: " << _parameters["stopbits"] << std::endl;
-    }
-    if(_type == tcp) {
       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
     }
     else {
@@ -150,11 +141,9 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
-    std::cout << "read(" << bar << ", " << addressInBytes << ", " << sizeInBytes << ")" << std::endl;
     if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
-    assert(bar == 0 || bar == 1 || bar == 3 || bar == 4);
     std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t address = addressInBytes;
     size_t length = sizeInBytes;
@@ -184,17 +173,18 @@ namespace ChimeraTK {
           "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
 
-    if(rc == -1) {
-      std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
-      _hasActiveException = true;
-      _lastFailedAddress = {bar, addressInBytes};
-      throw ChimeraTK::runtime_error(modbus_strerror(errno));
-    }
     if(rc != (int)length) {
-      std::cerr << "modbus::Backend: Failed reading address: " << address << " (length: " << length << ")" << std::endl;
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where read...");
+      std::string modbusError;
+      if(rc == -1) {
+        modbusError = modbus_strerror(errno);
+      }
+      else {
+        modbusError = "Not all registers were transferred.";
+      }
+      throw ChimeraTK::runtime_error("ModbusBackend failed reading address (" + std::to_string(bar) + "," +
+          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
     }
   }
 
@@ -207,7 +197,6 @@ namespace ChimeraTK {
     std::lock_guard<std::mutex> lock(modbus_mutex);
     size_t address = addressInBytes;
     size_t length = sizeInBytes;
-    assert(bar == 0 || bar == 3);
     if(bar == 3) {
       assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
       assert(length % 2 == 0);
@@ -237,16 +226,18 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error(
           "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
-    if(rc == -1) {
-      std::cerr << "modbus::Backend: Failed writing address: " << address << " (length: " << length << ")" << std::endl;
-      _hasActiveException = true;
-      _lastFailedAddress = {bar, addressInBytes};
-      throw ChimeraTK::runtime_error(modbus_strerror(errno));
-    }
     if(rc != (int)length) {
       _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
-      throw ChimeraTK::runtime_error("modbus::Backend: Not all registers where written...");
+      std::string modbusError;
+      if(rc == -1) {
+        modbusError = modbus_strerror(errno);
+      }
+      else {
+        modbusError = "Not all registers were transferred.";
+      }
+      throw ChimeraTK::runtime_error("ModbusBackend failed writing address (" + std::to_string(bar) + "," +
+          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
     }
   }
 
@@ -256,14 +247,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::isFunctional() const {
-    if(_opened && !_hasActiveException) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
+  bool ModbusBackend::isFunctional() const { return _opened && !_hasActiveException; }
 
   /********************************************************************************************************************/
 
