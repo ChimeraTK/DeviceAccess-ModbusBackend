@@ -31,13 +31,14 @@ namespace ChimeraTK {
 
   ModbusBackend::BackendRegisterer::BackendRegisterer() {
     BackendFactory::getInstance().registerBackendType("modbus", &ModbusBackend::createInstance, {"type", "map"});
-    std::cout << "modbus::BackendRegisterer: registered backend type modbus" << std::endl;
+    std::cout << "ModbusBackendRegisterer: registered backend type modbus" << std::endl;
   }
 
   /********************************************************************************************************************/
 
   ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string, std::string> parameters)
-  : NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(address), _parameters(parameters), _type(type) {
+  : NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(std::move(address)),
+    _parameters(std::move(parameters)), _type(type) {
     _opened = false;
   }
 
@@ -58,18 +59,18 @@ namespace ChimeraTK {
       _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
     }
     else {
-      _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), _parameters["parity"].c_str()[0],
+      _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), *_parameters["parity"].c_str(),
           std::stoi(_parameters["databits"]), std::stoi(_parameters["stopbits"]));
     }
-    if(_ctx == NULL) {
-      throw ChimeraTK::runtime_error(
-          std::string("modbus::Backend: Unable to allocate libmodbus context: ") + modbus_strerror(errno));
+    if(_ctx == nullptr) {
+      throw ChimeraTK::logic_error(
+          std::string("ModbusBackend: Unable to create libmodbus context: ") + modbus_strerror(errno));
     }
     if(modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"])) < 0) {
-      throw ChimeraTK::runtime_error(std::string("modbus::Backend: Set slave ID failed: ") + modbus_strerror(errno));
+      throw ChimeraTK::logic_error(std::string("ModbusBackend: Set slave ID failed: ") + modbus_strerror(errno));
     }
     if(modbus_connect(_ctx) == -1) {
-      throw ChimeraTK::runtime_error(std::string("modbus::Backend: Connection failed: ") + modbus_strerror(errno));
+      throw ChimeraTK::runtime_error(std::string("ModbusBackend: Connection failed: ") + modbus_strerror(errno));
     }
 
     auto disable_merging_str = _parameters.find("disableMerging");
@@ -96,9 +97,7 @@ namespace ChimeraTK {
     if(bar == 3 || bar == 4) {
       return 2;
     }
-    else {
-      return 1;
-    }
+    return 1;
   }
 
   /********************************************************************************************************************/
@@ -106,19 +105,22 @@ namespace ChimeraTK {
   boost::shared_ptr<DeviceBackend> ModbusBackend::createInstance(
       std::string address, std::map<std::string, std::string> parameters) {
     if(parameters["map"].empty()) {
-      throw ChimeraTK::logic_error("modbus::Backend: Map file name not specified.");
+      throw ChimeraTK::logic_error("ModbusBackend: Map file name not specified.");
     }
     ModbusType type;
     if(parameters["type"].empty()) {
-      throw ChimeraTK::logic_error("modbus::Backend: No modbus type (rtu/tcp) specified.");
+      throw ChimeraTK::logic_error("ModbusBackend: No modbus type (rtu/tcp) specified.");
     }
 
-    if(parameters["type"].compare("rtu") == 0)
+    if(parameters["type"] == "rtu") {
       type = rtu;
-    else if(parameters["type"].compare("tcp") == 0)
+    }
+    else if(parameters["type"] == "tcp") {
       type = tcp;
-    else
-      throw ChimeraTK::logic_error("modbus::Backend: Unknown modbus type. Available types are: rtu and tcp.");
+    }
+    else {
+      throw ChimeraTK::logic_error("ModbusBackend: Unknown modbus type. Available types are: rtu and tcp.");
+    }
 
     if(type == tcp) {
       if(parameters["port"].empty()) {
@@ -135,7 +137,7 @@ namespace ChimeraTK {
       if(parameters["stopbits"].empty()) parameters["stopbits"] = "1";
       if(parameters["slaveid"].empty()) parameters["slaveid"] = "1";
     }
-    return boost::shared_ptr<DeviceBackend>(new ModbusBackend(address, type, parameters));
+    return boost::shared_ptr<DeviceBackend>(new ModbusBackend(std::move(address), type, parameters));
   }
 
   /********************************************************************************************************************/
@@ -144,9 +146,19 @@ namespace ChimeraTK {
     if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
+
+    if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
+      throw ChimeraTK::logic_error("Requested read address exceeds maximum.");
+    }
+    auto address = static_cast<int>(addressInBytes);
+
+    if(sizeInBytes > size_t(std::numeric_limits<int>::max())) {
+      throw ChimeraTK::logic_error("Requested read length exceeds maximum.");
+    }
+    auto length = static_cast<int>(sizeInBytes);
+
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t address = addressInBytes;
-    size_t length = sizeInBytes;
+
     if(bar == 3 || bar == 4) {
       assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
       assert(length % 2 == 0);
@@ -157,19 +169,19 @@ namespace ChimeraTK {
 
     int rc;
     if(bar == 0) {
-      rc = modbus_read_bits(_ctx, address, length, (uint8_t*)data);
+      rc = modbus_read_bits(_ctx, address, length, static_cast<uint8_t*>(static_cast<void*>(data)));
     }
     else if(bar == 1) {
-      rc = modbus_read_input_bits(_ctx, address, length, (uint8_t*)data);
+      rc = modbus_read_input_bits(_ctx, address, length, static_cast<uint8_t*>(static_cast<void*>(data)));
     }
     else if(bar == 3) {
-      rc = modbus_read_registers(_ctx, address, length, (uint16_t*)data);
+      rc = modbus_read_registers(_ctx, address, length, static_cast<uint16_t*>(static_cast<void*>(data)));
     }
     else if(bar == 4) {
-      rc = modbus_read_input_registers(_ctx, address, length, (uint16_t*)data);
+      rc = modbus_read_input_registers(_ctx, address, length, static_cast<uint16_t*>(static_cast<void*>(data)));
     }
     else {
-      throw ChimeraTK::runtime_error(
+      throw ChimeraTK::logic_error(
           "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
 
@@ -194,9 +206,19 @@ namespace ChimeraTK {
     if(_hasActiveException) {
       throw ChimeraTK::runtime_error("previous error detected.");
     }
+
+    if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
+      throw ChimeraTK::logic_error("Requested write address exceeds maximum.");
+    }
+    auto address = static_cast<int>(addressInBytes);
+
+    if(sizeInBytes > size_t(std::numeric_limits<int>::max())) {
+      throw ChimeraTK::logic_error("Requested write length exceeds maximum.");
+    }
+    auto length = static_cast<int>(sizeInBytes);
+
     std::lock_guard<std::mutex> lock(modbus_mutex);
-    size_t address = addressInBytes;
-    size_t length = sizeInBytes;
+
     if(bar == 3) {
       assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
       assert(length % 2 == 0);
@@ -208,18 +230,19 @@ namespace ChimeraTK {
     int rc;
     if(bar == 0) {
       if(length == 1) {
-        rc = modbus_write_bit(_ctx, address, *((uint8_t*)data));
+        rc = modbus_write_bit(_ctx, address, *(static_cast<const uint8_t*>(static_cast<const void*>(data))));
       }
       else {
-        rc = modbus_write_bits(_ctx, address, length, (uint8_t*)data);
+        rc = modbus_write_bits(_ctx, address, length, static_cast<const uint8_t*>(static_cast<const void*>(data)));
       }
     }
     else if(bar == 3) {
       if(length == 1) {
-        rc = modbus_write_register(_ctx, address, *((uint16_t*)data));
+        rc = modbus_write_register(_ctx, address, *(static_cast<const uint16_t*>(static_cast<const void*>(data))));
       }
       else {
-        rc = modbus_write_registers(_ctx, address, length, (uint16_t*)data);
+        rc =
+            modbus_write_registers(_ctx, address, length, static_cast<const uint16_t*>(static_cast<const void*>(data)));
       }
     }
     else {

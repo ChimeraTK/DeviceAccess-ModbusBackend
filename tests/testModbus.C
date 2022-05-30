@@ -11,13 +11,13 @@
 #include <boost/test/included/unit_test.hpp>
 #undef BOOST_NO_EXCEPTIONS
 
-#include "ModbusBackend.h"
+#include <arpa/inet.h>
+#include <netinet/ip.h>
 
 #include <ChimeraTK/Device.h>
 #include <ChimeraTK/UnifiedBackendTest.h>
 
-#include <netinet/ip.h>
-#include <arpa/inet.h>
+#include "ModbusBackend.h"
 using namespace boost::unit_test_framework;
 
 using namespace ChimeraTK;
@@ -52,29 +52,29 @@ struct ModbusTestServer {
     _serverThread.join();
   }
 
-  int serverPort() const { return _serverPort; }
+  [[nodiscard]] int serverPort() const { return _serverPort; }
 
   struct __attribute__((packed)) map_holding {
-    int16_t reg1[1];
-    uint16_t reg2[1];
-    int16_t reg3_raw[1];
-    int32_t reg32[1];
-    float reg754[1];
+    int16_t reg1[1]{0};
+    uint16_t reg2[1]{0};
+    int16_t reg3_raw[1]{0};
+    int32_t reg32[1]{0};
+    float reg754[1]{0};
     int8_t padding{0};
-    int8_t reg8[1];
-    int16_t array[10];
+    int8_t reg8[1]{0};
+    int16_t array[10]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   };
   struct __attribute__((packed)) map_input {
-    int16_t reg1[1];
+    int16_t reg1[1]{0};
   };
   struct __attribute__((packed)) map_coil {
-    int8_t bit1[1];
-    int8_t bit2[1];
-    int8_t array[8];
+    int8_t bit1[1]{0};
+    int8_t bit2[1]{0};
+    int8_t array[8]{0, 0, 0, 0, 0, 0, 0, 0};
   };
   struct __attribute__((packed)) map_discreteinput {
-    int8_t array[10];
-    int8_t bit1[1];
+    int8_t array[10]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int8_t bit1[1]{0};
   };
 
   std::unique_lock<std::mutex> getLock() { return std::unique_lock<std::mutex>(_mx_mapping); }
@@ -127,22 +127,20 @@ struct ModbusTestServer {
         // New data on server_socket: new client tries to connect
         if(master_socket == server_socket) {
           // Create new connection
-          struct sockaddr_in clientaddr;
+          sockaddr_in clientaddr{};
           socklen_t addrlen = sizeof(clientaddr);
           memset(&clientaddr, 0, sizeof(clientaddr));
-          int newfd = accept(server_socket, (struct sockaddr*)&clientaddr, &addrlen);
+          int newfd = accept(server_socket, static_cast<sockaddr*>(static_cast<void*>(&clientaddr)), &addrlen);
           if(newfd == -1) {
             std::cerr << "Server accept() failure.\n";
             throw std::runtime_error("Test error: Server accept() failure");
           }
-          else {
-            // Add new
-            FD_SET(newfd, &refset);
+          // Add new
+          FD_SET(newfd, &refset);
 
-            if(newfd > fdmax) {
-              /* Keep track of the maximum */
-              fdmax = newfd;
-            }
+          if(newfd > fdmax) {
+            /* Keep track of the maximum */
+            fdmax = newfd;
           }
         }
         // Data received on any other socket: client is requesting read/write
@@ -172,12 +170,12 @@ struct ModbusTestServer {
   int _serverPort{5555};
 
   std::mutex _mx_mapping;
-  modbus_mapping_t _mapping;
+  modbus_mapping_t _mapping{};
 
-  map_holding _map_holding;
-  map_input _map_input;
-  map_coil _map_coil;
-  map_discreteinput _map_discreteinput;
+  map_holding _map_holding{};
+  map_input _map_input{};
+  map_coil _map_coil{};
+  map_discreteinput _map_discreteinput{};
 
   std::thread _serverThread;
 
