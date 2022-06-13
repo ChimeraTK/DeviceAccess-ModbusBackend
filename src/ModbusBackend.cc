@@ -40,12 +40,42 @@ namespace ChimeraTK {
   : NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(std::move(address)),
     _parameters(std::move(parameters)), _type(type) {
     _opened = false;
+
+    auto disable_merging_str = _parameters.find("disableMerging");
+    if(disable_merging_str != _parameters.end()) {
+      _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
+    }
   }
 
   /********************************************************************************************************************/
 
   void ModbusBackend::open() {
-    if(_opened) {
+    if(!_opened || _hasActiveException) {
+      if(_type == tcp) {
+        _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
+      }
+      else {
+        _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), *_parameters["parity"].c_str(),
+            std::stoi(_parameters["databits"]), std::stoi(_parameters["stopbits"]));
+      }
+      if(_ctx == nullptr) {
+        throw ChimeraTK::logic_error(
+            std::string("ModbusBackend: Unable to create libmodbus context: ") + modbus_strerror(errno));
+      }
+      if(modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"])) < 0) {
+        throw ChimeraTK::logic_error(std::string("ModbusBackend: Set slave ID failed: ") + modbus_strerror(errno));
+      }
+      if(modbus_connect(_ctx) == -1) {
+        // If server cannot be reached, errors ECONNREFUSED and EINPROGRESS might alternate. This will create
+        // many log messages e.g. in ApplicationCore and hence is here "filtered". EINPROGRESS is anyway a bit
+        // misleading in this context and hence is replaced with ECONNREFUSED.
+        auto error = errno;
+        if(error == EINPROGRESS) error = ECONNREFUSED;
+        throw ChimeraTK::runtime_error(std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error));
+      }
+    }
+
+    if(_hasActiveException) {
       _hasActiveException = false;
       // verify connection is ok again with a dummy read of the address which failed last.
       if(_lastFailedAddress.has_value()) {
@@ -53,32 +83,8 @@ namespace ChimeraTK {
         size_t dummyReadSize = _lastFailedAddress->first <= 1 ? 1 : 2; // depends on bar
         read(_lastFailedAddress->first, _lastFailedAddress->second, &temp, dummyReadSize);
       }
-      return;
-    }
-    if(_type == tcp) {
-      _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
-    }
-    else {
-      _ctx = modbus_new_rtu(_address.c_str(), std::stoi(_parameters["baud"]), *_parameters["parity"].c_str(),
-          std::stoi(_parameters["databits"]), std::stoi(_parameters["stopbits"]));
-    }
-    if(_ctx == nullptr) {
-      throw ChimeraTK::logic_error(
-          std::string("ModbusBackend: Unable to create libmodbus context: ") + modbus_strerror(errno));
-    }
-    if(modbus_set_slave(_ctx, std::stoi(_parameters["slaveid"])) < 0) {
-      throw ChimeraTK::logic_error(std::string("ModbusBackend: Set slave ID failed: ") + modbus_strerror(errno));
-    }
-    if(modbus_connect(_ctx) == -1) {
-      throw ChimeraTK::runtime_error(std::string("ModbusBackend: Connection failed: ") + modbus_strerror(errno));
-    }
-
-    auto disable_merging_str = _parameters.find("disableMerging");
-    if(disable_merging_str != _parameters.end()) {
-      _mergingEnabled = (std::stoi(disable_merging_str->second) == 0);
     }
     _opened = true;
-    _hasActiveException = false;
   }
 
   /********************************************************************************************************************/
@@ -86,8 +92,17 @@ namespace ChimeraTK {
   void ModbusBackend::closeImpl() {
     if(_opened) {
       _opened = false;
+      closeConnection();
+    }
+  }
+
+  /********************************************************************************************************************/
+
+  void ModbusBackend::closeConnection(){
+    if(_ctx != nullptr) {
       modbus_close(_ctx);
       modbus_free(_ctx);
+      _ctx = nullptr;
     }
   }
 
@@ -186,8 +201,8 @@ namespace ChimeraTK {
     }
 
     if(rc != (int)length) {
-      _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
+      setException();
       std::string modbusError;
       if(rc == -1) {
         modbusError = modbus_strerror(errno);
@@ -250,8 +265,8 @@ namespace ChimeraTK {
           "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
     if(rc != (int)length) {
-      _hasActiveException = true;
       _lastFailedAddress = {bar, addressInBytes};
+      setException();
       std::string modbusError;
       if(rc == -1) {
         modbusError = modbus_strerror(errno);
@@ -273,5 +288,10 @@ namespace ChimeraTK {
   bool ModbusBackend::isFunctional() const { return _opened && !_hasActiveException; }
 
   /********************************************************************************************************************/
+
+  void ModbusBackend::setException() {
+    _hasActiveException = true;
+    closeConnection();
+  }
 
 } // namespace ChimeraTK

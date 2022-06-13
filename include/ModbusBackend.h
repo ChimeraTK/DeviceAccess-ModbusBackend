@@ -36,6 +36,7 @@ namespace ChimeraTK {
 
     void open() override;
     void closeImpl() override;
+    void closeConnection();
     bool canMergeRequests() const override { return _mergingEnabled; }
     size_t minimumTransferAlignment(uint64_t bar) const override;
     void read(uint64_t bar, uint64_t address, int32_t* data, size_t sizeInBytes) override;
@@ -54,11 +55,13 @@ namespace ChimeraTK {
     };
     static BackendRegisterer gModbusBackend;
 
+    void setException() override;
+
    protected:
     bool isFunctional() const override;
 
    private:
-    modbus_t* _ctx;
+    modbus_t* _ctx{nullptr};
     std::string _address;
     std::map<std::string, std::string> _parameters;
     ModbusType _type;

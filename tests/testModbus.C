@@ -83,7 +83,33 @@ struct ModbusTestServer {
   map_coil& getCoil() { return _map_coil; }
   map_discreteinput& getDiscreteInput() { return _map_discreteinput; }
 
-  void setException(bool enable) { _exception = enable; }
+  void setException(bool enable, size_t cause) {
+    assert(cause <= 2);
+    if(cause == 0) {
+      _exception = enable;
+    }
+    else if(cause == 1) {
+      if(enable) {
+        assert(_serverThread.joinable());
+        _shutdown = true;
+        modbus_connect(modbus_new_tcp("127.0.0.1", serverPort()));
+        _serverThread.join();
+      }
+      else {
+        assert(!_serverThread.joinable());
+        _shutdown = false;
+        _serverThread = std::thread([this] { this->theServer(); });
+      }
+    }
+    else if(cause == 2) {
+      if(enable) {
+        _lk_timeout.lock();
+      }
+      else {
+        _lk_timeout.unlock();
+      }
+    }
+  }
 
  protected:
   void theServer() {
@@ -115,6 +141,8 @@ struct ModbusTestServer {
 
       // shutdown thread?
       if(_shutdown) {
+        close(server_socket);
+        modbus_free(ctx);
         return;
       }
 
@@ -181,6 +209,7 @@ struct ModbusTestServer {
 
   std::atomic<bool> _shutdown{false};
   std::atomic<bool> _exception{false};
+  std::unique_lock<std::mutex> _lk_timeout{_mx_mapping, std::defer_lock};
 };
 ModbusTestServer testServer;
 
@@ -196,7 +225,7 @@ struct RegisterDefaults {
   ChimeraTK::AccessModeFlags supportedFlags() { return {ChimeraTK::AccessMode::raw}; }
   size_t nChannels() { return 1; }
   size_t writeQueueLength() { return std::numeric_limits<size_t>::max(); }
-  size_t nRuntimeErrorCases() { return 1; }
+  size_t nRuntimeErrorCases() { return 3; }
 
   static constexpr auto capabilities = TestCapabilities<>()
                                            .disableForceDataLossWrite()
@@ -205,7 +234,7 @@ struct RegisterDefaults {
                                            .disableSwitchWriteOnly()
                                            .disableTestWriteNeverLosesData();
 
-  void setForceRuntimeError(bool enable, size_t) { testServer.setException(enable); }
+  void setForceRuntimeError(bool enable, size_t cause) { testServer.setException(enable, cause); }
 };
 
 /**********************************************************************************************************************/
