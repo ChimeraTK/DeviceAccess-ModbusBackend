@@ -43,7 +43,7 @@ struct ModbusTestServer {
     _mapping.tab_input_registers = static_cast<uint16_t*>(static_cast<void*>(&_map_input));
 
     // launch server
-    _serverThread = std::thread([this] { this->theServer(); });
+    _serverThread = boost::thread([this] { this->theServer(); });
   }
 
   ~ModbusTestServer() {
@@ -92,13 +92,15 @@ struct ModbusTestServer {
       if(enable) {
         assert(_serverThread.joinable());
         _shutdown = true;
-        modbus_connect(modbus_new_tcp("127.0.0.1", serverPort()));
-        _serverThread.join();
+        while(_serverThread.joinable()) {
+          modbus_connect(modbus_new_tcp("127.0.0.1", serverPort()));
+          _serverThread.try_join_for(boost::chrono::milliseconds(1));
+        }
       }
       else {
         assert(!_serverThread.joinable());
         _shutdown = false;
-        _serverThread = std::thread([this] { this->theServer(); });
+        _serverThread = boost::thread([this] { this->theServer(); });
       }
     }
     else if(cause == 2) {
@@ -205,7 +207,7 @@ struct ModbusTestServer {
   map_coil _map_coil{};
   map_discreteinput _map_discreteinput{};
 
-  std::thread _serverThread;
+  boost::thread _serverThread;
 
   std::atomic<bool> _shutdown{false};
   std::atomic<bool> _exception{false};
