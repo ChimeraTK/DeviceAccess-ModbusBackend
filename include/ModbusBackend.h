@@ -8,13 +8,13 @@
 #ifndef INCLUDE_MODBUSBACKEND_H_
 #define INCLUDE_MODBUSBACKEND_H_
 
-#include <cerrno>
-#include <string>
-#include <mutex>
-
+#include "ChimeraTK/NumericAddressedBackend.h"
 #include "modbus/modbus.h"
 
-#include "ChimeraTK/NumericAddressedBackend.h"
+#include <cerrno>
+#include <mutex>
+#include <optional>
+#include <string>
 
 namespace ChimeraTK {
   /**
