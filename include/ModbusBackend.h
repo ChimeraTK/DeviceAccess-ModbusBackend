@@ -1,12 +1,13 @@
+// SPDX-FileCopyrightText: Helmholtz-Zentrum Dresden-Rossendorf, FWKE, ChimeraTK Project <chimeratk-support@desy.de>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+#pragma once
+
 /*
  * ModbusBackend.h
  *
  *  Created on: Oct 9, 2018
  *      Author: zenker
  */
-
-#ifndef INCLUDE_MODBUSBACKEND_H_
-#define INCLUDE_MODBUSBACKEND_H_
 
 #include "ChimeraTK/NumericAddressedBackend.h"
 #include "modbus/modbus.h"
@@ -71,5 +72,3 @@ namespace ChimeraTK {
     std::optional<std::pair<uint64_t, uint64_t>> _lastFailedAddress;
   };
 } // namespace ChimeraTK
-
-#endif /* INCLUDE_MODBUSBACKEND_H_ */

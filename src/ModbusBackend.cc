@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Helmholtz-Zentrum Dresden-Rossendorf, FWKE, ChimeraTK Project <chimeratk-support@desy.de>
+// SPDX-License-Identifier: LGPL-3.0-or-later
 /*
  * ModbusBackend.cc
  *
@@ -98,7 +100,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  void ModbusBackend::closeConnection(){
+  void ModbusBackend::closeConnection() {
     if(_ctx != nullptr) {
       modbus_close(_ctx);
       modbus_free(_ctx);
@@ -281,11 +283,15 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::barIndexValid(uint64_t bar) { return (bar == 0) || (bar == 1) || (bar == 3) || (bar == 4); }
+  bool ModbusBackend::barIndexValid(uint64_t bar) {
+    return (bar == 0) || (bar == 1) || (bar == 3) || (bar == 4);
+  }
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::isFunctional() const { return _opened && !_hasActiveException; }
+  bool ModbusBackend::isFunctional() const {
+    return _opened && !_hasActiveException;
+  }
 
   /********************************************************************************************************************/
 
