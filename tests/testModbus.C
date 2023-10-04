@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Helmholtz-Zentrum Dresden-Rossendorf, FWKE, ChimeraTK Project <chimeratk-support@desy.de>
+// SPDX-License-Identifier: LGPL-3.0-or-later
 /*
  * testModbus.cc
  *
@@ -11,13 +13,12 @@
 #include <boost/test/included/unit_test.hpp>
 #undef BOOST_NO_EXCEPTIONS
 
+#include "ModbusBackend.h"
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 
 #include <ChimeraTK/Device.h>
 #include <ChimeraTK/UnifiedBackendTest.h>
-
-#include "ModbusBackend.h"
 using namespace boost::unit_test_framework;
 
 using namespace ChimeraTK;
