@@ -52,7 +52,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::open() {
-    if(!_opened || _hasActiveException) {
+    if(_ctx == nullptr) {
       if(_type == tcp) {
         _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
       }
@@ -73,20 +73,25 @@ namespace ChimeraTK {
         // misleading in this context and hence is replaced with ECONNREFUSED.
         auto error = errno;
         if(error == EINPROGRESS) error = ECONNREFUSED;
-        throw ChimeraTK::runtime_error(std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error));
+        auto message = std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error);
+        setException(message);
+        throw ChimeraTK::runtime_error(message);
       }
     }
+    setOpenedAndClearException();
 
-    if(_hasActiveException) {
-      _hasActiveException = false;
-      // verify connection is ok again with a dummy read of the address which failed last.
-      if(_lastFailedAddress.has_value()) {
-        int32_t temp;
-        size_t dummyReadSize = _lastFailedAddress->first <= 1 ? 1 : 2; // depends on bar
+    // verify connection is ok again with a dummy read of the address which failed last.
+    if(_lastFailedAddress.has_value()) {
+      int32_t temp;
+      size_t dummyReadSize = _lastFailedAddress->first <= 1 ? 1 : 2; // depends on bar
+      try {
         read(_lastFailedAddress->first, _lastFailedAddress->second, &temp, dummyReadSize);
       }
+      catch(ChimeraTK::runtime_error& ex) {
+        setException(ex.what());
+        throw;
+      }
     }
-    _opened = true;
   }
 
   /********************************************************************************************************************/
@@ -160,9 +165,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
-    if(_hasActiveException) {
-      throw ChimeraTK::runtime_error("previous error detected.");
-    }
+    checkActiveException();
 
     if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
       throw ChimeraTK::logic_error("Requested read address exceeds maximum.");
@@ -204,7 +207,6 @@ namespace ChimeraTK {
 
     if(rc != (int)length) {
       _lastFailedAddress = {bar, addressInBytes};
-      setException();
       std::string modbusError;
       if(rc == -1) {
         modbusError = modbus_strerror(errno);
@@ -220,9 +222,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
-    if(_hasActiveException) {
-      throw ChimeraTK::runtime_error("previous error detected.");
-    }
+    checkActiveException();
 
     if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
       throw ChimeraTK::logic_error("Requested write address exceeds maximum.");
@@ -268,7 +268,6 @@ namespace ChimeraTK {
     }
     if(rc != (int)length) {
       _lastFailedAddress = {bar, addressInBytes};
-      setException();
       std::string modbusError;
       if(rc == -1) {
         modbusError = modbus_strerror(errno);
@@ -289,14 +288,7 @@ namespace ChimeraTK {
 
   /********************************************************************************************************************/
 
-  bool ModbusBackend::isFunctional() const {
-    return _opened && !_hasActiveException;
-  }
-
-  /********************************************************************************************************************/
-
-  void ModbusBackend::setException() {
-    _hasActiveException = true;
+  void ModbusBackend::setExceptionImpl() noexcept {
     closeConnection();
   }
 

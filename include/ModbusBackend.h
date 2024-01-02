@@ -56,10 +56,7 @@ namespace ChimeraTK {
     };
     static BackendRegisterer gModbusBackend;
 
-    void setException() override;
-
-   protected:
-    bool isFunctional() const override;
+    void setExceptionImpl() noexcept override;
 
    private:
     modbus_t* _ctx{nullptr};
