@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 option(BUILD_TESTS "Build tests." ON)
 
 set(${PROJECT_NAME}_MAJOR_VERSION 01)
-set(${PROJECT_NAME}_MINOR_VERSION 04)
+set(${PROJECT_NAME}_MINOR_VERSION 05)
 set(${PROJECT_NAME}_PATCH_VERSION 00)
 include(cmake/set_version_numbers.cmake)
 
@@ -21,7 +21,7 @@ else()
   message(FATAL_ERROR "libmodbus was not found. Consider installing the package: libmodbus-dev")
 endif(MODBUS)
 
-find_package(ChimeraTK-DeviceAccess 02.06 REQUIRED)
+find_package(ChimeraTK-DeviceAccess 03.14 REQUIRED)
 
 include_directories(include)
 
