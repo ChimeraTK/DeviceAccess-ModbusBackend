@@ -1,5 +1,11 @@
 # Modbus backend
 
+[![License](https://img.shields.io/badge/license-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0.html)
+[![DOI](https://rodare.hzdr.de/badge/DOI/10.14278/rodare.3263.svg)](https://doi.org/10.14278/rodare.3263)
+![Supported Platforms][api-platforms]
+
+[api-platforms]: https://img.shields.io/badge/platforms-linux%20-blue.svg "Supported Platforms"
+
 The modbus backend is based on the NumericAddressedBackend. This means registers are accessed via an address consisting of two parts ("bar" and "address"). Register addresses are specified in a map file (just like for any other NumericAddressedBackend including e.g. the PCIe backend), which looks typically like this:
 
     #Name             #N_ELEMS    #ADDR  #N_BYTES  #BAR  #WIDTH  #N_FRAC  SIGNED  #ACCESS
