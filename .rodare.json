@@ -1,0 +1,20 @@
+{
+    "creators": [
+        {
+            "name": "Zenker, Klaus",
+            "affiliation": "Helmholtz-Zentrum Dresden-Rossendorf",
+            "orcid": "0000-0002-8120-6806"
+        }, 
+        {
+            "name": "Hierholzer, Martin",
+            "affiliation": "Deutsches Elektronen-Synchrotron DESY",
+            "orcid": "0000-0003-2285-1319"
+        }
+    ],
+    "title": "Modbus device backend for the ChimeraTK framework",
+    "access_right": "open",
+    "upload_type": "software",
+    "license": "LGPL-3.0",
+    "pub_id": "39923",
+    "description": "The modbus device backend implements a modbus client, that allows to create an ChimeraTK device that communicates with a modbus server. The implementation is based on the open source library libmodbus."
+}
