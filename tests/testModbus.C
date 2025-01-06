@@ -44,6 +44,7 @@ struct ModbusTestServer {
     _mapping.tab_input_registers = static_cast<uint16_t*>(static_cast<void*>(&_map_input));
 
     // launch server
+    _semServerLaunched.is_ready_and_reset();
     _serverThread = boost::thread([this] { this->theServer(); });
   }
 
@@ -101,7 +102,9 @@ struct ModbusTestServer {
       else {
         assert(!_serverThread.joinable());
         _shutdown = false;
+        _semServerLaunched.is_ready_and_reset();
         _serverThread = boost::thread([this] { this->theServer(); });
+        _semServerLaunched.wait_and_reset();
       }
     }
     else if(cause == 2) {
@@ -133,6 +136,8 @@ struct ModbusTestServer {
 
     // Keep track of the max file descriptor, needed for select()
     auto fdmax = server_socket;
+
+    _semServerLaunched.unlock();
 
     for(;;) {
       // Wait for any of the connections / server socket to receive data
@@ -213,6 +218,8 @@ struct ModbusTestServer {
   std::atomic<bool> _shutdown{false};
   std::atomic<bool> _exception{false};
   std::unique_lock<std::mutex> _lk_timeout{_mx_mapping, std::defer_lock};
+
+  cppext::semaphore _semServerLaunched{};
 };
 ModbusTestServer testServer;
 
