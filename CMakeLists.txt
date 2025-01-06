@@ -1,5 +1,5 @@
-project(ChimeraTK-DeviceAccess-ModbusBackend)
 cmake_minimum_required(VERSION 3.16)
+project(ChimeraTK-DeviceAccess-ModbusBackend)
 
 option(BUILD_TESTS "Build tests." ON)
 
