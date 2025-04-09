@@ -75,6 +75,7 @@ namespace ChimeraTK {
         if(error == EINPROGRESS) error = ECONNREFUSED;
         auto message = std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error);
         setException(message);
+        closeConnection();
         throw ChimeraTK::runtime_error(message);
       }
     }
