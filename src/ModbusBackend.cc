@@ -25,7 +25,6 @@ const char* deviceAccessVersionUsedToCompile() {
 }
 
 namespace ChimeraTK {
-  static std::mutex modbus_mutex;
 
   /********************************************************************************************************************/
 
@@ -52,7 +51,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::open() {
-    std::unique_lock<std::mutex> lock(modbus_mutex);
+    std::unique_lock<std::mutex> lock(_modbus_mutex);
 
     if(_ctx == nullptr) {
       if(_type == tcp) {
@@ -112,7 +111,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::closeConnection() {
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     if(_ctx != nullptr) {
       modbus_close(_ctx);
       modbus_free(_ctx);
@@ -182,7 +181,7 @@ namespace ChimeraTK {
     }
     auto length = static_cast<int>(sizeInBytes);
 
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     checkActiveException();
     assert(_ctx != nullptr);
 
@@ -239,7 +238,7 @@ namespace ChimeraTK {
     }
     auto length = static_cast<int>(sizeInBytes);
 
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     checkActiveException();
     assert(_ctx != nullptr);
 
