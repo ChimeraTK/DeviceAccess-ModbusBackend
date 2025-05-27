@@ -59,6 +59,9 @@ namespace ChimeraTK {
     void setExceptionImpl() noexcept override;
 
    private:
+    // governs access to _ctx
+    std::mutex _modbus_mutex;
+
     modbus_t* _ctx{nullptr};
     std::string _address;
     std::map<std::string, std::string> _parameters;
