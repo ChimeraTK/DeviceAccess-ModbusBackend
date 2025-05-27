@@ -52,6 +52,8 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::open() {
+    std::unique_lock<std::mutex> lock(modbus_mutex);
+
     if(_ctx == nullptr) {
       if(_type == tcp) {
         _ctx = modbus_new_tcp_pi(_address.c_str(), _parameters["port"].c_str());
@@ -75,11 +77,14 @@ namespace ChimeraTK {
         if(error == EINPROGRESS) error = ECONNREFUSED;
         auto message = std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error);
         setException(message);
+        lock.unlock();
         closeConnection();
         throw ChimeraTK::runtime_error(message);
       }
     }
     setOpenedAndClearException();
+
+    lock.unlock();
 
     // verify connection is ok again with a dummy read of the address which failed last.
     if(_lastFailedAddress.has_value()) {
@@ -107,6 +112,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::closeConnection() {
+    std::lock_guard<std::mutex> lock(modbus_mutex);
     if(_ctx != nullptr) {
       modbus_close(_ctx);
       modbus_free(_ctx);
@@ -166,8 +172,6 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::read(uint64_t bar, uint64_t addressInBytes, int32_t* data, size_t sizeInBytes) {
-    checkActiveException();
-
     if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
       throw ChimeraTK::logic_error("Requested read address exceeds maximum.");
     }
@@ -179,6 +183,8 @@ namespace ChimeraTK {
     auto length = static_cast<int>(sizeInBytes);
 
     std::lock_guard<std::mutex> lock(modbus_mutex);
+    checkActiveException();
+    assert(_ctx != nullptr);
 
     if(bar == 3 || bar == 4) {
       assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
@@ -223,8 +229,6 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::write(uint64_t bar, uint64_t addressInBytes, int32_t const* data, size_t sizeInBytes) {
-    checkActiveException();
-
     if(addressInBytes > size_t(std::numeric_limits<int>::max())) {
       throw ChimeraTK::logic_error("Requested write address exceeds maximum.");
     }
@@ -236,6 +240,8 @@ namespace ChimeraTK {
     auto length = static_cast<int>(sizeInBytes);
 
     std::lock_guard<std::mutex> lock(modbus_mutex);
+    checkActiveException();
+    assert(_ctx != nullptr);
 
     if(bar == 3) {
       assert(address % 2 == 0); // guaranteed via minimumTransferAlignment()
