@@ -12,8 +12,6 @@
 #include <ChimeraTK/BackendFactory.h>
 #include <ChimeraTK/DeviceAccessVersion.h>
 
-#include <bitset>
-
 // You have to define an "extern C" function with this signature. It has to return
 // CHIMERATK_DEVICEACCESS_VERSION for version checking when the library is loaded
 // at run time. This function is used to determine that this is a valid DeviceAcces
@@ -25,7 +23,6 @@ const char* deviceAccessVersionUsedToCompile() {
 }
 
 namespace ChimeraTK {
-  static std::mutex modbus_mutex;
 
   /********************************************************************************************************************/
 
@@ -39,8 +36,8 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   ModbusBackend::ModbusBackend(std::string address, ModbusType type, std::map<std::string, std::string> parameters)
-  : NumericAddressedBackend(parameters["map"]), _ctx(nullptr), _address(std::move(address)),
-    _parameters(std::move(parameters)), _type(type) {
+  : NumericAddressedBackend(parameters["map"]), _address(std::move(address)), _parameters(std::move(parameters)),
+    _type(type) {
     _opened = false;
 
     auto disable_merging_str = _parameters.find("disableMerging");
@@ -52,7 +49,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::open() {
-    std::unique_lock<std::mutex> lock(modbus_mutex);
+    std::unique_lock<std::mutex> lock(_modbus_mutex);
 
     if(_ctx == nullptr) {
       if(_type == tcp) {
@@ -74,7 +71,9 @@ namespace ChimeraTK {
         // many log messages e.g. in ApplicationCore and hence is here "filtered". EINPROGRESS is anyway a bit
         // misleading in this context and hence is replaced with ECONNREFUSED.
         auto error = errno;
-        if(error == EINPROGRESS) error = ECONNREFUSED;
+        if(error == EINPROGRESS) {
+          error = ECONNREFUSED;
+        }
         auto message = std::string("ModbusBackend: Connection failed: ") + modbus_strerror(error);
         setException(message);
         lock.unlock();
@@ -112,7 +111,7 @@ namespace ChimeraTK {
   /********************************************************************************************************************/
 
   void ModbusBackend::closeConnection() {
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     if(_ctx != nullptr) {
       modbus_close(_ctx);
       modbus_free(_ctx);
@@ -160,11 +159,21 @@ namespace ChimeraTK {
       }
     }
     else {
-      if(parameters["baud"].empty()) parameters["baud"] = "115200";
-      if(parameters["parity"].empty()) parameters["parity"] = "N";
-      if(parameters["databits"].empty()) parameters["databits"] = "8";
-      if(parameters["stopbits"].empty()) parameters["stopbits"] = "1";
-      if(parameters["slaveid"].empty()) parameters["slaveid"] = "1";
+      if(parameters["baud"].empty()) {
+        parameters["baud"] = "115200";
+      }
+      if(parameters["parity"].empty()) {
+        parameters["parity"] = "N";
+      }
+      if(parameters["databits"].empty()) {
+        parameters["databits"] = "8";
+      }
+      if(parameters["stopbits"].empty()) {
+        parameters["stopbits"] = "1";
+      }
+      if(parameters["slaveid"].empty()) {
+        parameters["slaveid"] = "1";
+      }
     }
     return boost::shared_ptr<DeviceBackend>(new ModbusBackend(std::move(address), type, parameters));
   }
@@ -182,7 +191,7 @@ namespace ChimeraTK {
     }
     auto length = static_cast<int>(sizeInBytes);
 
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     checkActiveException();
     assert(_ctx != nullptr);
 
@@ -192,7 +201,9 @@ namespace ChimeraTK {
       address /= 2;
       length /= 2;
     }
-    if(length == 0) length = 1;
+    if(length == 0) {
+      length = 1;
+    }
 
     int rc;
     if(bar == 0) {
@@ -212,7 +223,7 @@ namespace ChimeraTK {
           "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
 
-    if(rc != (int)length) {
+    if(rc != length) {
       _lastFailedAddress = {bar, addressInBytes};
       std::string modbusError;
       if(rc == -1) {
@@ -239,7 +250,7 @@ namespace ChimeraTK {
     }
     auto length = static_cast<int>(sizeInBytes);
 
-    std::lock_guard<std::mutex> lock(modbus_mutex);
+    std::lock_guard<std::mutex> lock(_modbus_mutex);
     checkActiveException();
     assert(_ctx != nullptr);
 
@@ -249,7 +260,9 @@ namespace ChimeraTK {
       address /= 2;
       length /= 2;
     }
-    if(length == 0) length = 1;
+    if(length == 0) {
+      length = 1;
+    }
 
     int rc;
     if(bar == 0) {
@@ -273,7 +286,7 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error(
           "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
-    if(rc != (int)length) {
+    if(rc != length) {
       _lastFailedAddress = {bar, addressInBytes};
       std::string modbusError;
       if(rc == -1) {

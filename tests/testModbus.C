@@ -13,12 +13,13 @@
 #include <boost/test/included/unit_test.hpp>
 #undef BOOST_NO_EXCEPTIONS
 
-#include "ModbusBackend.h"
-#include <arpa/inet.h>
-#include <netinet/ip.h>
+#include "modbus/modbus.h"
 
 #include <ChimeraTK/Device.h>
 #include <ChimeraTK/UnifiedBackendTest.h>
+
+#include <arpa/inet.h>
+#include <netinet/ip.h>
 using namespace boost::unit_test_framework;
 
 using namespace ChimeraTK;
@@ -56,7 +57,7 @@ struct ModbusTestServer {
 
   [[nodiscard]] int serverPort() const { return _serverPort; }
 
-  struct __attribute__((packed)) map_holding {
+  struct __attribute__((packed)) MapHolding {
     int16_t reg1[1]{0};
     uint16_t reg2[1]{0};
     int16_t reg3_raw[1]{0};
@@ -66,24 +67,24 @@ struct ModbusTestServer {
     int8_t reg8[1]{0};
     int16_t array[10]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   };
-  struct __attribute__((packed)) map_input {
+  struct __attribute__((packed)) MapInput {
     int16_t reg1[1]{0};
   };
-  struct __attribute__((packed)) map_coil {
+  struct __attribute__((packed)) MapCoil {
     int8_t bit1[1]{0};
     int8_t bit2[1]{0};
     int8_t array[8]{0, 0, 0, 0, 0, 0, 0, 0};
   };
-  struct __attribute__((packed)) map_discreteinput {
+  struct __attribute__((packed)) MapDiscreteinput {
     int8_t array[10]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int8_t bit1[1]{0};
   };
 
   std::unique_lock<std::mutex> getLock() { return std::unique_lock<std::mutex>(_mx_mapping); }
-  map_holding& getHolding() { return _map_holding; }
-  map_input& getInput() { return _map_input; }
-  map_coil& getCoil() { return _map_coil; }
-  map_discreteinput& getDiscreteInput() { return _map_discreteinput; }
+  MapHolding& getHolding() { return _map_holding; }
+  MapInput& getInput() { return _map_input; }
+  MapCoil& getCoil() { return _map_coil; }
+  MapDiscreteinput& getDiscreteInput() { return _map_discreteinput; }
 
   void setException(bool enable, size_t cause) {
     assert(cause <= 2);
@@ -208,10 +209,10 @@ struct ModbusTestServer {
   std::mutex _mx_mapping;
   modbus_mapping_t _mapping{};
 
-  map_holding _map_holding{};
-  map_input _map_input{};
-  map_coil _map_coil{};
-  map_discreteinput _map_discreteinput{};
+  MapHolding _map_holding{};
+  MapInput _map_input{};
+  MapCoil _map_coil{};
+  MapDiscreteinput _map_discreteinput{};
 
   boost::thread _serverThread;
 
@@ -219,7 +220,7 @@ struct ModbusTestServer {
   std::atomic<bool> _exception{false};
   std::unique_lock<std::mutex> _lk_timeout{_mx_mapping, std::defer_lock};
 
-  cppext::semaphore _semServerLaunched{};
+  cppext::semaphore _semServerLaunched;
 };
 ModbusTestServer testServer;
 
@@ -331,7 +332,7 @@ struct BitDefaults : RegisterDefaults<Derived, int8_t> {
 template<typename Derived, typename RAW_USER_TYPE>
 struct HoldingDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
   bool isWriteable() { return true; }
-  ModbusTestServer::map_holding& getMapping() { return testServer.getHolding(); }
+  ModbusTestServer::MapHolding& getMapping() { return testServer.getHolding(); }
 };
 
 /**********************************************************************************************************************/
@@ -339,7 +340,7 @@ struct HoldingDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
 template<typename Derived, typename RAW_USER_TYPE>
 struct InputDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
   bool isWriteable() { return false; }
-  ModbusTestServer::map_input& getMapping() { return testServer.getInput(); }
+  ModbusTestServer::MapInput& getMapping() { return testServer.getInput(); }
 };
 
 /**********************************************************************************************************************/
@@ -347,7 +348,7 @@ struct InputDefaults : NumericDefaults<Derived, RAW_USER_TYPE> {
 template<typename Derived>
 struct CoilDefaults : BitDefaults<Derived> {
   bool isWriteable() { return true; }
-  ModbusTestServer::map_coil& getMapping() { return testServer.getCoil(); }
+  ModbusTestServer::MapCoil& getMapping() { return testServer.getCoil(); }
 };
 
 /**********************************************************************************************************************/
@@ -355,7 +356,7 @@ struct CoilDefaults : BitDefaults<Derived> {
 template<typename Derived>
 struct DiscreteInputDefaults : BitDefaults<Derived> {
   bool isWriteable() { return false; }
-  ModbusTestServer::map_discreteinput& getMapping() { return testServer.getDiscreteInput(); }
+  ModbusTestServer::MapDiscreteinput& getMapping() { return testServer.getDiscreteInput(); }
 };
 
 /**********************************************************************************************************************/
@@ -363,10 +364,10 @@ struct DiscreteInputDefaults : BitDefaults<Derived> {
 struct HoldingReg1 : HoldingDefaults<HoldingReg1, int16_t> {
   using minimumUserType = int16_t;
 
-  std::string path() { return "/holding/reg1"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg1;
+  static std::string path() { return "/holding/reg1"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg1;
 
-  size_t nElementsPerChannel() { return 1; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 42;
@@ -377,11 +378,11 @@ struct HoldingReg1 : HoldingDefaults<HoldingReg1, int16_t> {
 struct HoldingReg2 : HoldingDefaults<HoldingReg2, uint16_t> {
   using minimumUserType = uint16_t;
 
-  std::string path() { return "/holding/reg2"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg2;
+  static std::string path() { return "/holding/reg2"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg2;
 
-  bool isWriteable() { return true; }
-  size_t nElementsPerChannel() { return 1; }
+  static bool isWriteable() { return true; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 120;
@@ -392,11 +393,11 @@ struct HoldingReg2 : HoldingDefaults<HoldingReg2, uint16_t> {
 struct HoldingReg3 : HoldingDefaults<HoldingReg3, int16_t> {
   using minimumUserType = float;
 
-  std::string path() { return "/holding/reg3"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg3_raw;
+  static std::string path() { return "/holding/reg3"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg3_raw;
 
-  bool isWriteable() { return true; }
-  size_t nElementsPerChannel() { return 1; }
+  static bool isWriteable() { return true; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 256.;
   rawUserType delta = 66;
@@ -407,11 +408,11 @@ struct HoldingReg3 : HoldingDefaults<HoldingReg3, int16_t> {
 struct HoldingReg32 : HoldingDefaults<HoldingReg32, int32_t> {
   using minimumUserType = int32_t;
 
-  std::string path() { return "/holding/reg32"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg32;
+  static std::string path() { return "/holding/reg32"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg32;
 
-  bool isWriteable() { return true; }
-  size_t nElementsPerChannel() { return 1; }
+  static bool isWriteable() { return true; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 128000;
@@ -422,11 +423,11 @@ struct HoldingReg32 : HoldingDefaults<HoldingReg32, int32_t> {
 struct HoldingReg754 : HoldingDefaults<HoldingReg754, float> {
   using minimumUserType = float;
 
-  std::string path() { return "/holding/reg754"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg754;
+  static std::string path() { return "/holding/reg754"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg754;
 
-  bool isWriteable() { return true; }
-  size_t nElementsPerChannel() { return 1; }
+  static bool isWriteable() { return true; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 3.141592654;
@@ -437,11 +438,11 @@ struct HoldingReg754 : HoldingDefaults<HoldingReg754, float> {
 struct HoldingReg8 : HoldingDefaults<HoldingReg8, int8_t> {
   using minimumUserType = int8_t;
 
-  std::string path() { return "/holding/reg8"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[1] = &ModbusTestServer::map_holding::reg8;
+  static std::string path() { return "/holding/reg8"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[1] = &ModbusTestServer::MapHolding::reg8;
 
-  bool isWriteable() { return true; }
-  size_t nElementsPerChannel() { return 1; }
+  static bool isWriteable() { return true; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 42;
@@ -452,10 +453,10 @@ struct HoldingReg8 : HoldingDefaults<HoldingReg8, int8_t> {
 struct HoldingArray : HoldingDefaults<HoldingArray, int16_t> {
   using minimumUserType = int16_t;
 
-  std::string path() { return "/holding/array"; }
-  rawUserType (ModbusTestServer::map_holding::*pReg)[10] = &ModbusTestServer::map_holding::array;
+  static std::string path() { return "/holding/array"; }
+  rawUserType (ModbusTestServer::MapHolding::*pReg)[10] = &ModbusTestServer::MapHolding::array;
 
-  size_t nElementsPerChannel() { return 10; }
+  static size_t nElementsPerChannel() { return 10; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 7;
@@ -466,10 +467,10 @@ struct HoldingArray : HoldingDefaults<HoldingArray, int16_t> {
 struct InputReg1 : InputDefaults<InputReg1, int16_t> {
   using minimumUserType = int16_t;
 
-  std::string path() { return "/input/reg1"; }
-  rawUserType (ModbusTestServer::map_input::*pReg)[1] = &ModbusTestServer::map_input::reg1;
+  static std::string path() { return "/input/reg1"; }
+  rawUserType (ModbusTestServer::MapInput::*pReg)[1] = &ModbusTestServer::MapInput::reg1;
 
-  size_t nElementsPerChannel() { return 1; }
+  static size_t nElementsPerChannel() { return 1; }
 
   double rawPerCooked = 1.0;
   rawUserType delta = 666;
@@ -478,51 +479,51 @@ struct InputReg1 : InputDefaults<InputReg1, int16_t> {
 /**********************************************************************************************************************/
 
 struct CoilBit1 : CoilDefaults<CoilBit1> {
-  std::string path() { return "/coil/bit1"; }
-  rawUserType (ModbusTestServer::map_coil::*pReg)[1] = &ModbusTestServer::map_coil::bit1;
+  static std::string path() { return "/coil/bit1"; }
+  rawUserType (ModbusTestServer::MapCoil::*pReg)[1] = &ModbusTestServer::MapCoil::bit1;
 
-  size_t nElementsPerChannel() { return 1; }
+  static size_t nElementsPerChannel() { return 1; }
 };
 
 /**********************************************************************************************************************/
 
 struct CoilBit2 : CoilDefaults<CoilBit2> {
-  std::string path() { return "/coil/bit2"; }
-  rawUserType (ModbusTestServer::map_coil::*pReg)[1] = &ModbusTestServer::map_coil::bit2;
+  static std::string path() { return "/coil/bit2"; }
+  rawUserType (ModbusTestServer::MapCoil::*pReg)[1] = &ModbusTestServer::MapCoil::bit2;
 
-  size_t nElementsPerChannel() { return 1; }
+  static size_t nElementsPerChannel() { return 1; }
 };
 
 /**********************************************************************************************************************/
 
 struct CoilArray : CoilDefaults<CoilArray> {
-  std::string path() { return "/coil/array"; }
-  rawUserType (ModbusTestServer::map_coil::*pReg)[8] = &ModbusTestServer::map_coil::array;
+  static std::string path() { return "/coil/array"; }
+  rawUserType (ModbusTestServer::MapCoil::*pReg)[8] = &ModbusTestServer::MapCoil::array;
 
-  size_t nElementsPerChannel() { return 8; }
+  static size_t nElementsPerChannel() { return 8; }
 };
 
 /**********************************************************************************************************************/
 
 struct DiscreteInputArray : DiscreteInputDefaults<DiscreteInputArray> {
-  std::string path() { return "/discreteinp/array"; }
-  rawUserType (ModbusTestServer::map_discreteinput::*pReg)[10] = &ModbusTestServer::map_discreteinput::array;
+  static std::string path() { return "/discreteinp/array"; }
+  rawUserType (ModbusTestServer::MapDiscreteinput::*pReg)[10] = &ModbusTestServer::MapDiscreteinput::array;
 
-  size_t nElementsPerChannel() { return 10; }
+  static size_t nElementsPerChannel() { return 10; }
 };
 
 /**********************************************************************************************************************/
 
 struct DiscreteInputBit1 : DiscreteInputDefaults<DiscreteInputBit1> {
-  std::string path() { return "/discreteinp/bit1"; }
-  rawUserType (ModbusTestServer::map_discreteinput::*pReg)[1] = &ModbusTestServer::map_discreteinput::bit1;
+  static std::string path() { return "/discreteinp/bit1"; }
+  rawUserType (ModbusTestServer::MapDiscreteinput::*pReg)[1] = &ModbusTestServer::MapDiscreteinput::bit1;
 
-  size_t nElementsPerChannel() { return 1; }
+  static size_t nElementsPerChannel() { return 1; }
 };
 
 /**********************************************************************************************************************/
 
-BOOST_AUTO_TEST_CASE(unifiedBackendTest) {
+BOOST_AUTO_TEST_CASE(TestModbusUnified) {
   auto ubt = ChimeraTK::UnifiedBackendTest<>()
                  .addRegister<HoldingReg1>()
                  .addRegister<HoldingReg2>()
