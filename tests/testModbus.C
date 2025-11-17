@@ -69,6 +69,7 @@ struct ModbusTestServer {
   };
   struct __attribute__((packed)) MapInput {
     int16_t reg1[1]{0};
+    uint32_t huge[2000]{};
   };
   struct __attribute__((packed)) MapCoil {
     int8_t bit1[1]{0};
@@ -478,6 +479,20 @@ struct InputReg1 : InputDefaults<InputReg1, int16_t> {
 
 /**********************************************************************************************************************/
 
+struct InputHuge : InputDefaults<InputHuge, uint32_t> {
+  using minimumUserType = uint32_t;
+
+  static std::string path() { return "/input/huge"; }
+  rawUserType (ModbusTestServer::MapInput::*pReg)[2000] = &ModbusTestServer::MapInput::huge;
+
+  static size_t nElementsPerChannel() { return 2000; }
+
+  double rawPerCooked = 1.0;
+  rawUserType delta = 321;
+};
+
+/**********************************************************************************************************************/
+
 struct CoilBit1 : CoilDefaults<CoilBit1> {
   static std::string path() { return "/coil/bit1"; }
   rawUserType (ModbusTestServer::MapCoil::*pReg)[1] = &ModbusTestServer::MapCoil::bit1;
@@ -533,6 +548,7 @@ BOOST_AUTO_TEST_CASE(TestModbusUnified) {
                  .addRegister<HoldingReg8>()
                  .addRegister<HoldingArray>()
                  .addRegister<InputReg1>()
+                 .addRegister<InputHuge>()
                  .addRegister<CoilBit1>()
                  .addRegister<CoilBit2>()
                  .addRegister<CoilArray>()
