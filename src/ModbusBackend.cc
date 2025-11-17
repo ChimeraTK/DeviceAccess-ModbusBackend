@@ -205,35 +205,48 @@ namespace ChimeraTK {
       length = 1;
     }
 
+    constexpr int nMaxTransferWords = 125; // limitation of Modbus protocol
+
     int rc;
     if(bar == 0) {
-      rc = modbus_read_bits(_ctx, address, length, static_cast<uint8_t*>(static_cast<void*>(data)));
+      auto* t = static_cast<uint8_t*>(static_cast<void*>(data));
+      rc = modbus_read_bits(_ctx, address, length, t);
+      checkErrorAndThrow(rc, length, bar, addressInBytes, false);
     }
     else if(bar == 1) {
-      rc = modbus_read_input_bits(_ctx, address, length, static_cast<uint8_t*>(static_cast<void*>(data)));
+      auto* t = static_cast<uint8_t*>(static_cast<void*>(data));
+      rc = modbus_read_input_bits(_ctx, address, length, t);
+      checkErrorAndThrow(rc, length, bar, addressInBytes, false);
     }
     else if(bar == 3) {
-      rc = modbus_read_registers(_ctx, address, length, static_cast<uint16_t*>(static_cast<void*>(data)));
+      auto addressEnd = address + length; // points to _after_ the end
+      auto* t16 = static_cast<uint16_t*>(static_cast<void*>(data));
+      while(address < addressEnd) {
+        auto lengthActual = std::min(addressEnd - address, nMaxTransferWords);
+
+        rc = modbus_read_registers(_ctx, address, lengthActual, t16);
+        checkErrorAndThrow(rc, lengthActual, bar, addressInBytes, false);
+
+        address += nMaxTransferWords;
+        t16 += nMaxTransferWords;
+      }
     }
     else if(bar == 4) {
-      rc = modbus_read_input_registers(_ctx, address, length, static_cast<uint16_t*>(static_cast<void*>(data)));
+      auto addressEnd = address + length; // points to _after_ the end
+      auto* t16 = static_cast<uint16_t*>(static_cast<void*>(data));
+      while(address < addressEnd) {
+        auto lengthActual = std::min(addressEnd - address, nMaxTransferWords);
+
+        rc = modbus_read_input_registers(_ctx, address, lengthActual, t16);
+        checkErrorAndThrow(rc, lengthActual, bar, addressInBytes, false);
+
+        address += nMaxTransferWords;
+        t16 += nMaxTransferWords;
+      }
     }
     else {
       throw ChimeraTK::logic_error(
           "Bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
-    }
-
-    if(rc != length) {
-      _lastFailedAddress = {bar, addressInBytes};
-      std::string modbusError;
-      if(rc == -1) {
-        modbusError = modbus_strerror(errno);
-      }
-      else {
-        modbusError = "Not all registers were transferred.";
-      }
-      throw ChimeraTK::runtime_error("ModbusBackend failed reading address (" + std::to_string(bar) + "," +
-          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
     }
   }
 
@@ -286,6 +299,13 @@ namespace ChimeraTK {
       throw ChimeraTK::runtime_error(
           "Writing bar number " + std::to_string((int)bar) + " is not supported by the ModbusBackend.");
     }
+
+    checkErrorAndThrow(rc, length, bar, addressInBytes, true);
+  }
+
+  /********************************************************************************************************************/
+
+  void ModbusBackend::checkErrorAndThrow(int rc, int length, uint64_t bar, uint64_t addressInBytes, bool isWrite) {
     if(rc != length) {
       _lastFailedAddress = {bar, addressInBytes};
       std::string modbusError;
@@ -295,8 +315,10 @@ namespace ChimeraTK {
       else {
         modbusError = "Not all registers were transferred.";
       }
-      throw ChimeraTK::runtime_error("ModbusBackend failed writing address (" + std::to_string(bar) + "," +
-          std::to_string(address) + ") length " + std::to_string(length) + ": " + modbusError);
+      using namespace std::literals::string_literals;
+      throw ChimeraTK::runtime_error("ModbusBackend failed "s + (isWrite ? "writing" : "reading") + " address (" +
+          std::to_string(bar) + "," + std::to_string(addressInBytes) + ") length " + std::to_string(length) + ": " +
+          modbusError);
     }
   }
 

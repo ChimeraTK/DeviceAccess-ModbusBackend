@@ -59,6 +59,9 @@ namespace ChimeraTK {
     void setExceptionImpl() noexcept override;
 
    private:
+    // check code returned by Modbus read/write function and throw appropriate exception on error
+    void checkErrorAndThrow(int rc, int length, uint64_t bar, uint64_t addressInBytes, bool isWrite);
+
     // governs access to _ctx
     std::mutex _modbus_mutex;
 
