@@ -51,8 +51,10 @@ struct ModbusTestServer {
 
   ~ModbusTestServer() {
     _shutdown = true;
-    modbus_connect(modbus_new_tcp("127.0.0.1", serverPort()));
+    auto* ctx = modbus_new_tcp("127.0.0.1", serverPort());
+    modbus_connect(ctx);
     _serverThread.join();
+    modbus_free(ctx);
   }
 
   [[nodiscard]] int serverPort() const { return _serverPort; }
@@ -97,8 +99,10 @@ struct ModbusTestServer {
         assert(_serverThread.joinable());
         _shutdown = true;
         while(_serverThread.joinable()) {
-          modbus_connect(modbus_new_tcp("127.0.0.1", serverPort()));
+          auto* ctx = modbus_new_tcp("127.0.0.1", serverPort());
+          modbus_connect(ctx);
           _serverThread.try_join_for(boost::chrono::milliseconds(1));
+          modbus_free(ctx);
         }
       }
       else {
@@ -264,10 +268,13 @@ struct NumericDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
   template<typename UserType>
   std::vector<std::vector<UserType>> generateValue() {
     auto lk = testServer.getLock();
-    auto* val = derived->getMapping().*(derived->pReg);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto* val = reinterpret_cast<std::byte*>(derived->getMapping().*(derived->pReg));
+    decltype(derived->delta) rawVal;
     std::vector<UserType> rval(derived->nElementsPerChannel());
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
-      rval[i] = rawToCooked<UserType>(val[i] + derived->delta + i);
+      memcpy(&rawVal, val + i * sizeof(rawVal), sizeof(rawVal));
+      rval[i] = rawToCooked<UserType>(rawVal + derived->delta + i);
     }
     return {rval};
   }
@@ -275,18 +282,27 @@ struct NumericDefaults : RegisterDefaults<Derived, RAW_USER_TYPE> {
   template<typename UserType>
   std::vector<std::vector<UserType>> getRemoteValue() {
     auto lk = testServer.getLock();
-    auto* val = derived->getMapping().*(derived->pReg);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto* val = reinterpret_cast<std::byte*>(derived->getMapping().*(derived->pReg));
+    decltype(derived->delta) rawVal;
     std::vector<UserType> rval(derived->nElementsPerChannel());
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
-      rval[i] = rawToCooked<UserType>(val[i]);
+      memcpy(&rawVal, val + i * sizeof(rawVal), sizeof(rawVal));
+      rval[i] = rawToCooked<UserType>(rawVal);
     }
     return {rval};
   }
 
   void setRemoteValue() {
     auto lk = testServer.getLock();
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto* buff = reinterpret_cast<std::byte*>(derived->getMapping().*(derived->pReg));
+    decltype(derived->delta) val;
     for(size_t i = 0; i < derived->nElementsPerChannel(); ++i) {
-      (derived->getMapping().*(derived->pReg))[i] += derived->delta + i;
+      memcpy(&val, buff + i * sizeof(val), sizeof(val));
+      val += derived->delta + i;
+      memcpy(buff + i * sizeof(val), &val, sizeof(val));
+      //(derived->getMapping().*(derived->pReg))[i] += derived->delta + i;
     }
   }
 };
